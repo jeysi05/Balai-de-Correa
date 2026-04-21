@@ -3,6 +3,7 @@ import { db } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { injectTheme } from './injectTheme';
 
+
 import Navbar from './components/Navbar';
 import HomePage from './components/HomePage';
 import BookingPage from './components/BookingPage'; 

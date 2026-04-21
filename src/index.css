@@ -1,10 +1,1 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* You can keep any custom fonts or global resets below here */
-html, body {
-  margin: 0;
-  padding: 0;
-  scroll-behavior: smooth;
-}
+@import "tailwindcss";
