@@ -1,0 +1,305 @@
+/* ── Login ── */
+.loginWrap {
+  min-height: 100vh;
+  background: var(--b-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.loginCard {
+  background: var(--b-canvas);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  border: 1px solid var(--b-canvas3);
+}
+
+.loginLogo {
+  width: 48px; height: 48px;
+  border: 1.5px solid var(--b-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.loginTitle {
+  font-family: var(--ff-d);
+  font-size: 24px;
+  font-style: italic;
+  color: var(--b-ink);
+  margin-bottom: 4px;
+}
+
+.loginSub {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--b-mist);
+  margin-bottom: 1.75rem;
+}
+
+.loginInput {
+  width: 100%;
+  font-family: var(--ff-b);
+  font-size: 14px;
+  color: var(--b-ink);
+  background: var(--b-canvas2);
+  border: 1px solid var(--b-canvas3);
+  padding: 11px 14px;
+  outline: none;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.loginInput:focus { border-color: var(--b-primary); }
+
+.loginBtn { margin-top: 0; }
+
+/* ── Dashboard ── */
+.wrap {
+  background: var(--b-canvas);
+  min-height: calc(100vh - 60px);
+}
+
+/* Top bar */
+.topbar {
+  background: var(--b-ink);
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topEyebrow {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--b-accent);
+  margin-bottom: 4px;
+}
+
+.topTitle {
+  font-family: var(--ff-d);
+  font-size: 22px;
+  font-style: italic;
+  color: #fff;
+}
+
+.topSub {
+  font-family: var(--ff-u);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  font-style: normal;
+  margin-left: 8px;
+}
+
+.logoutBtn {
+  font-family: var(--ff-u);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.logoutBtn:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+
+/* KPIs */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--b-canvas3);
+  border-bottom: 1px solid var(--b-canvas3);
+}
+
+.kpi {
+  background: var(--b-canvas2);
+  padding: 1.25rem 1.5rem;
+}
+
+.kpiN {
+  font-family: var(--ff-d);
+  font-size: 28px;
+  font-style: italic;
+  font-weight: 700;
+  color: var(--b-ink);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.kpiL {
+  font-family: var(--ff-u);
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--b-mist);
+}
+
+.kpiD {
+  font-family: var(--ff-u);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #2a6a2a;
+  margin-top: 4px;
+}
+
+/* Filter tabs */
+.filterRow {
+  display: flex;
+  padding: 0 2rem;
+  border-bottom: 1px solid var(--b-canvas3);
+  background: var(--b-canvas);
+}
+
+.filterTab {
+  font-family: var(--ff-u);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--b-mist);
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filterTab:hover { color: var(--b-ink); }
+.filterOn { color: var(--b-primary); border-bottom-color: var(--b-primary); }
+
+/* Table */
+.tableWrap {
+  padding: 1.5rem 2rem;
+}
+
+.thead {
+  display: grid;
+  grid-template-columns: 1.75fr 1.75fr 1fr 1fr 90px;
+  gap: 1rem;
+  padding: 0 1rem 9px;
+  border-bottom: 1px solid var(--b-canvas3);
+  font-family: var(--ff-u);
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--b-mist);
+}
+
+.tbody {
+  border: 1px solid var(--b-canvas3);
+}
+
+.trow {
+  display: grid;
+  grid-template-columns: 1.75fr 1.75fr 1fr 1fr 90px;
+  gap: 1rem;
+  padding: 13px 1rem;
+  border-bottom: 1px solid var(--b-canvas3);
+  align-items: center;
+  transition: background 0.15s;
+}
+.trow:last-child { border-bottom: none; }
+.trow:hover { background: var(--b-canvas2); }
+
+.emptyRow {
+  padding: 2rem 1rem;
+  font-family: var(--ff-b);
+  font-size: 13px;
+  color: var(--b-mist);
+  text-align: center;
+}
+
+.guestName {
+  font-family: var(--ff-b);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--b-ink);
+}
+
+.guestContact {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--b-mist);
+  margin-top: 2px;
+}
+
+.bookingProp {
+  font-family: var(--ff-b);
+  font-size: 12px;
+  color: var(--b-ink);
+}
+
+.bookingDate {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--b-accent);
+  margin-top: 2px;
+}
+
+.bookingRef {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--b-mist);
+  margin-top: 2px;
+}
+
+.price {
+  font-family: var(--ff-d);
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 700;
+  color: var(--b-ink);
+}
+
+/* Action buttons */
+.actions { display: flex; gap: 5px; justify-content: flex-end; }
+
+.actBtn {
+  width: 26px; height: 26px;
+  border: 1px solid var(--b-canvas3);
+  background: var(--b-canvas2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.actGreen { color: #1a5a1a; }
+.actGreen:hover { background: #e5f0e5; border-color: #aacfaa; }
+
+.actBlue  { color: #1a3a7a; }
+.actBlue:hover { background: #e5ecf5; border-color: #aabedd; }
+
+.actRed   { color: #7a1818; }
+.actRed:hover { background: #fce5e5; border-color: #e8aaaa; }
+
+.actGray  { color: var(--b-mist); }
+.actGray:hover { background: var(--b-canvas3); }

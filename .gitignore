@@ -23,5 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Environment
 .env
+.env.local
+.env.*

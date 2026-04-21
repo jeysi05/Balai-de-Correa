@@ -1,235 +1,205 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
-import { X, Copy, Check, ShoppingCart, AlertTriangle, Wallet } from 'lucide-react';
+import { commitMasterBooking } from '../firebase';
 import emailjs from '@emailjs/browser';
+import theme from '../theme.config';
+import BookingSuccessModal from './BookingSuccessModal'; 
 
-const SERVICE_ID = "service_2kiok8v";
-const TEMPLATE_ID = "template_qelnx59";
-const PUBLIC_KEY = "V6CJEroyQL2AHs8CS";
+const EMAILJS_SERVICE  = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_KEY      = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
-export default function PaymentModal({ isOpen, onClose, cart, totalPrice }) {
+const CHANNELS = ['GCash', 'PayMaya', 'Bank Transfer'];
 
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
-  const [referenceNo, setReferenceNo] = useState(''); 
-  const [paymentChannel, setPaymentChannel] = useState('GCash'); // NEW: Default to GCash
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function PaymentModal({ villaCart, amenitiesCart, onClose }) {
+  const [channel, setChannel] = useState('GCash');
+  const [guestDetails, setGuestDetails] = useState({ name: '', contact: '', refNo: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
 
-  if (!isOpen && !cart) return null;
+  // --- 1. FULL PAYMENT MATH ENGINE ---
+  const calculateNights = () => {
+    if (!villaCart.checkIn || !villaCart.checkOut) return 1;
+    const start = new Date(villaCart.checkIn);
+    const end = new Date(villaCart.checkOut);
+    const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 1;
+  };
 
-  const handleCopyNumber = () => {
-    navigator.clipboard.writeText("09175917475");
+  const getNightlyRate = () => {
+    const guests = parseInt(villaCart.guests) || 2;
+    if (guests <= 3) return 9000;
+    if (guests <= 6) return 13500;
+    if (guests <= 12) return 20500;
+    return 20500 + (guests - 12) * 1500;
+  };
+
+  const nights = calculateNights();
+  const nightlyRate = getNightlyRate();
+  const basePrice = nightlyRate * nights;
+  
+  const amenityTotal = amenitiesCart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0);
+  
+  // The Master Total includes the 5k Security Deposit automatically
+  const masterTotal = basePrice + amenityTotal;
+  const amountToPayNow = masterTotal; // 100% Payment
+
+  const qrImage = channel === 'PayMaya' ? theme.mayaQR
+    : channel === 'Bank Transfer' ? theme.instaPayQR
+    : theme.gcashQR;
+
+  const copyNumber = () => {
+    navigator.clipboard.writeText(theme.gcashNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // NEW: Helper function to swap the QR code image
-  const getQRCodeImage = () => {
-    switch (paymentChannel) {
-      case 'PayMaya': return '/maya-qr.jpg';
-      case 'Chinabank': return '/chinabank-qr.jpg';
-      default: return '/gcash-qr.jpg';
-    }
-  };
-
-  const handleSubmit = async (e, paymentType = "PAID") => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setError('');
 
-    if (!cart || cart.length === 0) {
-      alert("Cart is empty.");
+    if (!guestDetails.name.trim() || !guestDetails.contact.trim() || guestDetails.refNo.length !== 6) {
+      setError('Please fill in all details and enter the last 6 digits of your reference number.');
       return;
     }
-    
-    if (!name.trim() || !contact.trim()) {
-        alert("Please fill out your name and contact number.");
-        return;
-    }
 
-    if (paymentType === "PAID") {
-        if (!referenceNo || referenceNo.length !== 6 || isNaN(referenceNo)) {
-            alert("Please enter exactly the LAST 6 DIGITS of your Reference Number.");
-            return;
-        }
-    }
-
-    setIsSubmitting(true);
-
+    setSubmitting(true);
     try {
-      const initialStatus = paymentType === "PAY_LATER" ? "PAY_LATER" : "PENDING";
+      const parentReservation = {
+        ...villaCart,
+        guestName: guestDetails.name,
+        guestContact: guestDetails.contact,
+        paymentChannel: channel,
+        referenceNo: guestDetails.refNo,
+        basePrice,
+        totalPrice: masterTotal,
+        amountPaid: amountToPayNow,
+        status: 'pending_payment',
+        createdAt: new Date().toISOString()
+      };
 
-      await Promise.all(
-        cart.map(item =>
-          addDoc(collection(db, "bookings"), {
-            court: item.court,
-            date: item.date,
-            timeSlot: `${item.time}:00`,
-            duration: item.duration,
-            price: item.price,
-            customerName: name,
-            customerContact: contact,
-            referenceNo: paymentType === "PAY_LATER" ? "N/A" : referenceNo, 
-            paymentChannel: paymentType === "PAY_LATER" ? "N/A" : paymentChannel, // NEW: Save channel to DB
-            paymentProof: paymentType === "PAY_LATER" ? "Pay Later Requested" : "Pending Verification",
-            status: initialStatus, 
-            createdAt: new Date(),
-          })
-        )
-      );
+      await commitMasterBooking(parentReservation, amenitiesCart);
 
-      const bookingDetails = cart.map(item => 
-        `Court ${item.court} on ${item.date} @ ${item.time}:00 (${item.duration}hrs)`
-      ).join('\n');
+      // SMS Logic (Safety Switched)
+      if (theme.semaphoreApiKey) {
+        const sms = `Hi ${guestDetails.name}! We've received your full payment of ₱${masterTotal.toLocaleString()} for your stay at ${theme.villaName}. We will verify your GCash Ref #${guestDetails.refNo} shortly.`;
+        await fetch('https://api.semaphore.co/api/v4/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ apikey: theme.semaphoreApiKey, number: guestDetails.contact, message: sms }),
+        }).catch(console.error);
+      }
 
-      await emailjs.send(
-        SERVICE_ID,
-        TEMPLATE_ID,
-        {
-          to_name: "Pickle Jar Admin",
-          customer_name: name,
-          customer_contact: contact,
-          message: bookingDetails, 
-          total_price: totalPrice
-        },
-        PUBLIC_KEY
-      );
-
-      const successMsg = paymentType === "PAY_LATER" 
-        ? "Success! Your Pay Later request has been sent for approval." 
-        : "Success! Your booking request has been sent.";
-      
-      alert(successMsg);
-      setName('');
-      setContact('');
-      setReferenceNo('');
-      onClose();
-      window.location.reload(); 
-
-    } catch (error) {
-      console.error("Payment Error:", error);
-      alert("Something went wrong. Please try again.");
+      setShowSuccess(true);
+    } catch (err) {
+      console.error(err);
+      setError('Transaction failed. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4 backdrop-blur-sm">
-      <div className="bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md border border-white/10 relative max-h-[90vh] overflow-y-auto flex flex-col">
+  if (showSuccess) {
+    return <BookingSuccessModal referenceNo={guestDetails.refNo} onClose={onClose} />;
+  }
 
-        <div className="bg-zinc-950/80 p-6 flex justify-between items-center border-b border-white/5 sticky top-0 backdrop-blur-md z-10">
-          <div>
-            <h3 className="font-black text-xl text-white uppercase tracking-wide italic">Confirm Payment</h3>
-            <p className="text-zinc-500 text-xs mt-1">Scan QR via {paymentChannel}</p>
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex justify-end bg-[#2A1A12]/80 backdrop-blur-sm transition-opacity" onClick={e => e.target === e.currentTarget && onClose()}>
+      
+      <div className="w-full md:w-[500px] h-full shadow-2xl flex flex-col overflow-hidden border-l border-white/10 bg-[#F9F8F6] text-[#2A1A12]">
+        
+        <div className="p-6 md:p-10 flex-grow overflow-y-auto custom-scrollbar">
+          <div className="flex justify-between items-start mb-10">
+            <div>
+              <h2 className="font-['Playfair_Display'] text-3xl italic leading-none mb-2 text-[#C15A3E]">Finalize Booking</h2>
+              <p className="font-sans text-[11px] text-gray-400 uppercase tracking-widest font-bold">Step 3 of 3</p>
+            </div>
+            <button onClick={onClose} className="text-gray-300 hover:text-black transition-colors text-2xl">✕</button>
           </div>
-          <button onClick={onClose} className="bg-zinc-800 hover:bg-zinc-700 p-2 rounded-full text-zinc-400 hover:text-white transition">
-            <X size={20} />
+
+          {error && <div className="p-4 mb-6 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl">{error}</div>}
+
+          {/* Amount to Pay Card */}
+          <div className="bg-[#2A1A12] text-white p-8 rounded-3xl mb-8 relative overflow-hidden shadow-xl">
+             <div className="relative z-10">
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C15A3E] mb-2">Total Amount to Pay</div>
+                <div className="text-5xl font-['Playfair_Display'] italic mb-3">₱{amountToPayNow.toLocaleString()}</div>
+                
+                {/* REFUNDABLE SUBTEXT */}
+                <div className="flex items-start gap-2 pt-3 border-t border-white/10 mt-1">
+                   <div className="w-4 h-4 rounded-full bg-[#C15A3E] text-[10px] flex items-center justify-center font-bold text-white shrink-0 mt-0.5">!</div>
+                   <p className="text-[11px] text-white/70 leading-relaxed italic">
+                     Includes **₱5,000 Refundable Security Deposit** to be returned via GCash after your checkout inspection.
+                   </p>
+                </div>
+             </div>
+             <div className="absolute -right-4 -bottom-4 text-white/5 text-9xl font-serif italic select-none">₱</div>
+          </div>
+
+          {/* Channels */}
+          <div className="flex gap-2 mb-8">
+            {CHANNELS.map(c => (
+              <button
+                key={c}
+                onClick={() => setChannel(c)}
+                className={`flex-1 py-3 border-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${channel === c ? 'border-[#C15A3E] bg-white text-[#C15A3E] shadow-md' : 'border-gray-100 text-gray-400 hover:border-gray-200'}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {/* Payment Detail Card */}
+          <div className="flex flex-col items-center p-8 bg-white border border-gray-100 rounded-3xl mb-8 shadow-sm">
+            <div className="w-48 h-48 bg-gray-50 p-3 rounded-2xl mb-6 border border-gray-100">
+               <img src={qrImage} alt="QR" className="w-full h-full object-contain" />
+            </div>
+            <div className="text-center">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">GCash Account Name</div>
+              <div className="font-bold text-[#2A1A12] text-lg mb-4">{theme.gcashName}</div>
+              <button onClick={copyNumber} type="button" className="px-6 py-2 bg-gray-100 hover:bg-[#C15A3E]/10 hover:text-[#C15A3E] text-gray-600 font-bold text-xs rounded-full transition-all">
+                {copied ? '✓ Number Copied' : theme.gcashDisplay}
+              </button>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-2">Full Guest Name</label>
+              <input type="text" required value={guestDetails.name} onChange={e => setGuestDetails({...guestDetails, name: e.target.value})} className="w-full bg-white border border-gray-200 p-4 rounded-xl text-sm outline-none focus:border-[#C15A3E]" placeholder="Juan Dela Cruz" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-2">Mobile Number (For Confirmation)</label>
+              <input type="tel" required value={guestDetails.contact} onChange={e => setGuestDetails({...guestDetails, contact: e.target.value})} className="w-full bg-white border border-gray-200 p-4 rounded-xl text-sm outline-none focus:border-[#C15A3E]" placeholder="0917 123 4567" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-2">Last 6 Digits of Ref No.</label>
+              <input type="text" required maxLength={6} value={guestDetails.refNo} onChange={e => setGuestDetails({...guestDetails, refNo: e.target.value.replace(/\D/g, '')})} className="w-full bg-white border border-gray-200 p-4 rounded-xl font-mono text-sm outline-none focus:border-[#C15A3E]" placeholder="000000" />
+            </div>
+          </form>
+        </div>
+
+        {/* Action Button */}
+        <div className="p-6 md:p-8 bg-white border-t border-gray-100">
+          <button 
+            type="submit"
+            form="checkout-form"
+            disabled={submitting}
+            className={`w-full py-5 bg-[#2A1A12] text-[#C15A3E] text-[11px] font-bold tracking-[0.2em] uppercase rounded-2xl shadow-xl transition-all ${submitting ? 'opacity-50 cursor-wait' : 'hover:bg-black hover:-translate-y-0.5'}`}
+          >
+            {submitting ? 'Verifying...' : `Confirm & Pay ₱${amountToPayNow.toLocaleString()}`}
           </button>
         </div>
 
-        <form className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-          <div className="flex flex-col items-center space-y-4 bg-zinc-800/30 p-4 rounded-2xl border border-white/5">
-            
-            {/* NEW: Payment Channel Dropdown */}
-            <div className="w-full flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2">
-                <Wallet size={16} className="text-lime-400" />
-                <select 
-                    value={paymentChannel}
-                    onChange={(e) => setPaymentChannel(e.target.value)}
-                    className="w-full bg-transparent text-white text-sm font-bold outline-none cursor-pointer"
-                >
-                    <option value="GCash" className="bg-zinc-900 text-white">GCash</option>
-                    <option value="PayMaya" className="bg-zinc-900 text-white">PayMaya</option>
-                    <option value="Chinabank" className="bg-zinc-900 text-white">Chinabank (InstaPay)</option>
-                </select>
-            </div>
-
-              <div className="p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                <img 
-                  src={getQRCodeImage()} 
-                  alt={`${paymentChannel} QR`} 
-                  className="w-64 h-64 rounded-lg object-contain" 
-                />
-              </div>
-
-            <button type="button" onClick={handleCopyNumber} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 flex justify-between items-center hover:bg-zinc-700 transition group">
-              <span className="text-zinc-400 text-xs font-bold uppercase tracking-widest group-hover:text-white">Copy Number</span>
-              <div className="flex items-center gap-2">
-                <span className="text-white font-mono font-bold">0917 591 7475</span>
-                {copied ? <Check size={16} className="text-lime-400" /> : <Copy size={16} className="text-zinc-500" />}
-              </div>
-            </button>
-            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">PJC GCASH/MAYA (NORMAN PATRICK S.)</p>
-          </div>
-
-          <div className="space-y-2">
-             <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                <ShoppingCart size={14} /> Order Summary
-             </h4>
-             <div className="bg-zinc-950/50 rounded-xl border border-white/5 p-3 max-h-32 overflow-y-auto custom-scrollbar">
-                {cart && cart.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0">
-                        <span className="text-zinc-300 flex flex-col">
-                            <span>Court {item.court} <span className="text-zinc-500 text-xs">({item.duration}h)</span></span>
-                            <span className="text-lime-400/80 text-[10px]">{item.date} @ {item.time}:00</span>
-                        </span>
-                        <span className="text-lime-400 font-mono">₱{item.price}</span>
-                    </div>
-                ))}
-             </div>
-             <div className="flex justify-between items-center pt-2">
-                <span className="text-white font-bold uppercase">Total Due</span>
-                <span className="text-2xl font-black text-lime-400">₱{totalPrice}</span>
-             </div>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <input required value={name} onChange={e => setName(e.target.value)} placeholder="Full Name (for booking ref)" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-lime-500 outline-none transition" />
-            <input required value={contact} onChange={e => setContact(e.target.value)} placeholder="Mobile Number (e.g., 09171234567)" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-lime-500 outline-none transition" />
-            
-            <input
-              value={referenceNo}
-              onChange={e => {
-                  const cleanValue = e.target.value.replace(/\D/g, '').slice(0, 6);
-                  setReferenceNo(cleanValue);
-              }}
-              placeholder={`${paymentChannel} Ref No. (LAST 6 DIGITS)`}
-              maxLength={6}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-lime-500 outline-none transition"
-            />
-          </div>
-
-          <div className="bg-zinc-950/50 border border-yellow-500/20 rounded-xl p-4 text-[10px] text-zinc-400 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar">
-            <div className="flex items-center gap-2 mb-2 text-yellow-500 font-bold uppercase tracking-widest">
-                <AlertTriangle size={12} /> Booking & Payment Disclaimer
-            </div>
-            <p className="mb-2">By completing your reservation, you agree to the following terms:</p>
-            <ul className="list-disc pl-4 space-y-1 mb-2">
-                <li>Payments are non-refundable except in cases where Pickle Jar Courts is liable or requests for cancellations.</li>
-                <li>Any changes to your booking must be requested at least 24 hours prior to the scheduled booking time.</li>
-                <li>"Pay later" bookings are subject to approval and does not guarantee your reservation.</li>
-                <li>Cancellations are not permitted. However, bookings may be rescheduled (subject to availability), provided the request is made at least 24 hours in advance. Failure to notify us within the required time frame will result in forfeiture of the reservation and payment.</li>
-            </ul>
-            <p className="font-bold text-white mt-2">We will send you a confirmation SMS to your registered phone number once we approve your order.</p>
-          </div>
-
-          <div className="flex gap-3">
-              <button type="button" onClick={(e) => handleSubmit(e, "PAY_LATER")} disabled={isSubmitting} className="w-1/3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-4 rounded-xl text-xs uppercase tracking-widest disabled:opacity-50 transition-colors border border-zinc-700">
-                Pay Later
-              </button>
-              <button type="button" onClick={(e) => handleSubmit(e, "PAID")} disabled={isSubmitting} className="w-2/3 bg-lime-400 hover:bg-lime-300 text-black font-black py-4 rounded-xl text-sm uppercase tracking-widest disabled:opacity-50 transition-transform active:scale-95 shadow-lg shadow-lime-400/20">
-                {isSubmitting ? "..." : "Confirm Payment"}
-              </button>
-          </div>
-
-        </form>
       </div>
     </div>,
     document.body

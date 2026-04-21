@@ -1,0 +1,207 @@
+.wrap {
+  display: grid;
+  grid-template-columns: 1fr 290px;
+  background: var(--b-ink);
+  min-height: calc(100vh - 60px);
+}
+
+/* ── LEFT ── */
+.left {
+  padding: 2.5rem 2rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.leftHead { margin-bottom: 1.75rem; }
+
+.leftH {
+  font-family: var(--ff-d);
+  font-size: 34px;
+  font-style: italic;
+  color: #fff;
+  line-height: 1.05;
+  margin-bottom: 0.5rem;
+}
+
+.leftSub {
+  font-family: var(--ff-b);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1.6;
+}
+
+/* Date pills */
+.datePills {
+  display: flex;
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 1.5rem;
+}
+
+.dp {
+  flex: 1;
+  padding: 11px 14px;
+}
+
+/* Slot grid */
+.sgLabel {
+  font-family: var(--ff-u);
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.2);
+  margin-bottom: 10px;
+}
+
+.sgrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.slot {
+  padding: 10px 4px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--b-ink);
+  transition: background 0.15s;
+  user-select: none;
+}
+.slot:hover:not(.taken) { background: rgba(255, 255, 255, 0.06); }
+
+.taken { opacity: 0.35; cursor: not-allowed; }
+
+.sel { background: var(--b-primary); }
+
+.slotTime {
+  font-family: var(--ff-u);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+.sel .slotTime { color: #fff; }
+
+.slotStat {
+  font-family: var(--ff-u);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.2);
+  margin-top: 2px;
+}
+.sel .slotStat { color: var(--b-accent); }
+
+/* Legend */
+.legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── RIGHT ── */
+.right {
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.villaName {
+  font-family: var(--ff-d);
+  font-size: 18px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 3px;
+}
+
+.villaLoc {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--b-accent);
+  margin-bottom: 1.5rem;
+}
+
+.field {
+  margin-bottom: 10px;
+}
+
+.fieldInput {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 9px 11px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.fieldInput:focus { border-color: var(--b-accent); }
+
+/* Price */
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: auto;
+}
+
+.priceLabel {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.priceNote {
+  font-family: var(--ff-u);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--b-accent);
+  margin-top: 3px;
+}
+
+.priceVal {
+  font-family: var(--ff-d);
+  font-size: 26px;
+  font-style: italic;
+  color: var(--b-accent2);
+}
+
+/* Breakdown */
+.breakdown {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 10px;
+  margin-top: 4px;
+}
+
+.breakdownRow {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ff-b);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 2px 0;
+}
