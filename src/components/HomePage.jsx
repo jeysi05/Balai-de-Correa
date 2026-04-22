@@ -97,8 +97,9 @@ export default function HomePage({ villaCart, setVillaCart, onProceed, liveReser
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 translate-y-1/2 px-4 z-20">
-          <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] p-2 md:p-4 flex flex-col md:flex-row items-center gap-2 border border-gray-100">
+          <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] p-2 md:p-4 flex flex-col md:flex-row items-center gap-2 border border-gray-100">
             <div className="flex w-full flex-col md:flex-row gap-2">
+              
               <div className="flex-1 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl p-3 md:p-4 cursor-pointer relative group border border-transparent focus-within:border-[#C15A3E]">
                 <label className="block text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-1">Check In</label>
                 <input 
@@ -121,6 +122,21 @@ export default function HomePage({ villaCart, setVillaCart, onProceed, liveReser
                 />
               </div>
 
+              {/* NEW: PACKAGE DROPDOWN */}
+              <div className="flex-1 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl p-3 md:p-4 cursor-pointer border border-transparent focus-within:border-[#C15A3E]">
+                <label className="block text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-1">Package</label>
+                <select 
+                  value={villaCart?.package || 'Tres Package'}
+                  onChange={(e) => handleCartUpdate('package', e.target.value)}
+                  className="w-full bg-transparent text-sm font-semibold text-gray-900 outline-none cursor-pointer"
+                >
+                  {/* We filter out 'Day Tour' so only the overnight packages show */}
+                  {theme.rates.filter(r => r.name !== 'Day Tour').map((rate, i) => (
+                    <option key={i} value={rate.name}>{rate.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex-1 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl p-3 md:p-4 cursor-pointer border border-transparent focus-within:border-[#C15A3E]">
                 <label className="block text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-1">Guests</label>
                 <select 
@@ -133,6 +149,7 @@ export default function HomePage({ villaCart, setVillaCart, onProceed, liveReser
                   ))}
                 </select>
               </div>
+
             </div>
 
             <button 

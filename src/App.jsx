@@ -3,7 +3,6 @@ import { db } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { injectTheme } from './injectTheme';
 
-
 import Navbar from './components/Navbar';
 import HomePage from './components/HomePage';
 import BookingPage from './components/BookingPage'; 
@@ -25,6 +24,7 @@ export default function App() {
     checkIn: '',
     checkOut: '',
     guests: 2,
+    package: 'Tres Package', // <-- Added Package State
     occasion: '',
     basePrice: 0 
   });
@@ -56,7 +56,7 @@ export default function App() {
     return (
       <AdminDashboard
         onLogout={() => { setIsAdmin(false); setPage('home'); }}
-        onBack={() => { setIsAdmin(false); setPage('home'); }} // <-- THIS IS THE CRITICAL FIX
+        onBack={() => { setIsAdmin(false); setPage('home'); }} 
       />
     );
   }
@@ -76,6 +76,7 @@ export default function App() {
           villaCart={villaCart}
           setVillaCart={setVillaCart}
           onProceed={() => setPage('booking')}
+          liveReservations={liveReservations}
         />
       )}
 
@@ -97,7 +98,8 @@ export default function App() {
           onClose={() => setShowPayment(false)}
           onSuccess={() => {
             setShowPayment(false);
-            setVillaCart({ checkIn: '', checkOut: '', guests: 2, occasion: '', basePrice: 0 });
+            // Reset state including the new package field
+            setVillaCart({ checkIn: '', checkOut: '', guests: 2, package: 'Tres Package', occasion: '', basePrice: 0 });
             setAmenitiesCart([]);
             setPage('home');
           }}
