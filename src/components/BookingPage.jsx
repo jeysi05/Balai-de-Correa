@@ -11,7 +11,7 @@ export default function BookingPage({
   onBack
 }) {
   
-  // --- 1. THE DYNAMIC MATH ENGINE (Corrected for 19 Guests) ---
+  // --- 1. NEW DYNAMIC BREAKDOWN LOGIC ---
   const calculateNights = () => {
     if (!villaCart.checkIn || !villaCart.checkOut) return 1;
     const start = new Date(villaCart.checkIn);
@@ -20,23 +20,40 @@ export default function BookingPage({
     return diff > 0 ? diff : 1;
   };
 
-  const getNightlyRate = () => {
+  // This breaks down the package name, base price, and extra heads
+  const getRateBreakdown = () => {
     const guests = parseInt(villaCart.guests) || 2;
-    // TRES PACKAGE (1-3 Pax)
-    if (guests <= 3) return 9000;
-    // SEIS PACKAGE (4-6 Pax)
-    if (guests <= 6) return 13500;
-    // DOCE PACKAGE (7-12 Pax)
-    if (guests <= 12) return 20500;
-    
-    // EXTRA HEADS (13-21 Pax): Base 20,500 + 1,500 per head over 12
-    const extraHeads = guests - 12;
-    return 20500 + (extraHeads * 1500);
+    let packageName = "Tres Package";
+    let packagePrice = 9000;
+    let extraGuests = 0;
+
+    if (guests <= 3) {
+      packageName = "Tres Package";
+      packagePrice = 9000;
+    } else if (guests <= 6) {
+      packageName = "Seis Package";
+      packagePrice = 13500;
+    } else {
+      packageName = "Doce Package";
+      packagePrice = 20500;
+      if (guests > 12) {
+        extraGuests = guests - 12;
+      }
+    }
+
+    return {
+      packageName,
+      packagePrice,
+      extraGuests,
+      extraRate: extraGuests * 1500 // ₱1,500 per extra head
+    };
   };
 
   const nights = calculateNights();
-  const nightlyRate = getNightlyRate(); 
-  const basePrice = nightlyRate * nights; 
+  const breakdown = getRateBreakdown(); 
+  
+  // Base price is now properly calculated using the breakdown parts
+  const basePrice = (breakdown.packagePrice + breakdown.extraRate) * nights; 
   
   const amenityTotal = amenitiesCart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0);
   const masterTotal = basePrice + amenityTotal;
@@ -47,7 +64,6 @@ export default function BookingPage({
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-[#F9F8F6] pt-[88px] pb-32 lg:pb-0 relative overflow-hidden">
       
-      {/* --- SUBTLE BACKGROUND GLOW FX --- */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#2A1A12]/5 to-transparent pointer-events-none"></div>
       
       {/* ─── LEFT: Amenity Selection Grid ─── */}
@@ -96,10 +112,28 @@ export default function BookingPage({
               <div className="text-sm text-gray-500 mb-1">{displayCheckIn} — {displayCheckOut}</div>
               <div className="text-sm text-gray-500 mb-4">{villaCart.guests} Guests</div>
               
-              <div className="flex justify-between items-center text-base font-semibold text-gray-900 mt-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <span className="text-sm font-normal text-gray-600">Base Rate ({nights} night{nights > 1 ? 's' : ''})</span>
-                <span>₱{basePrice.toLocaleString()}</span>
+              {/* --- UPDATED UI: RATE BREAKDOWN CARD --- */}
+              <div className="mt-6 bg-gray-50 p-5 rounded-2xl border border-gray-100 flex flex-col gap-3 shadow-sm">
+                
+                {/* Base Package Row */}
+                <div className="flex justify-between items-center text-sm font-semibold text-gray-900">
+                  <span className="font-medium text-gray-700">
+                    {breakdown.packageName} <span className="opacity-60 text-xs font-normal">({nights} night{nights > 1 ? 's' : ''})</span>
+                  </span>
+                  <span>₱{(breakdown.packagePrice * nights).toLocaleString()}</span>
+                </div>
+
+                {/* Extra Guests Row (Only shows if extraGuests > 0) */}
+                {breakdown.extraGuests > 0 && (
+                  <div className="flex justify-between items-center text-sm font-semibold text-[#C15A3E] pt-3 border-t border-gray-200 border-dashed">
+                    <span className="font-medium">Extra Heads (x{breakdown.extraGuests})</span>
+                    <span>₱{(breakdown.extraRate * nights).toLocaleString()}</span>
+                  </div>
+                )}
+
               </div>
+              {/* --------------------------------------- */}
+
             </div>
 
             {amenitiesCart.length > 0 && (
@@ -137,7 +171,7 @@ export default function BookingPage({
         </div>
       </div>
 
-      {/* ─── MOBILE STICKY FOOTER (Restored) ─── */}
+      {/* ─── MOBILE STICKY FOOTER ─── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 px-6 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] flex justify-between items-center">
         <div>
           <div className="text-[9px] font-bold tracking-widest uppercase text-gray-400 mb-1">Total Due</div>
