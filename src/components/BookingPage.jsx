@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import theme from '../theme.config';
 import AmenityCard from './AmenityCard';
 
@@ -10,8 +10,10 @@ export default function BookingPage({
   onCheckout,
   onBack
 }) {
-  
-  // --- 1. NEW DYNAMIC BREAKDOWN LOGIC ---
+  // New state for the mobile breakdown drawer
+  const [showMobileCart, setShowMobileCart] = useState(false);
+
+  // --- DYNAMIC BREAKDOWN LOGIC ---
   const calculateNights = () => {
     if (!villaCart.checkIn || !villaCart.checkOut) return 1;
     const start = new Date(villaCart.checkIn);
@@ -20,7 +22,6 @@ export default function BookingPage({
     return diff > 0 ? diff : 1;
   };
 
-  // This breaks down the package name, base price, and extra heads
   const getRateBreakdown = () => {
     const guests = parseInt(villaCart.guests) || 2;
     let packageName = "Tres Package";
@@ -45,14 +46,13 @@ export default function BookingPage({
       packageName,
       packagePrice,
       extraGuests,
-      extraRate: extraGuests * 1500 // ₱1,500 per extra head
+      extraRate: extraGuests * 1500
     };
   };
 
   const nights = calculateNights();
   const breakdown = getRateBreakdown(); 
   
-  // Base price is now properly calculated using the breakdown parts
   const basePrice = (breakdown.packagePrice + breakdown.extraRate) * nights; 
   
   const amenityTotal = amenitiesCart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0);
@@ -60,6 +60,56 @@ export default function BookingPage({
 
   const displayCheckIn = villaCart.checkIn ? new Date(villaCart.checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD';
   const displayCheckOut = villaCart.checkOut ? new Date(villaCart.checkOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD';
+
+  // --- REUSABLE CART CONTENT ---
+  const CartContent = () => (
+    <>
+      <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#C15A3E] mb-8 border-b-2 border-dashed border-gray-200 pb-4">
+        Reservation Summary
+      </h3>
+      
+      <div className="mb-8">
+        <h4 className="font-['Playfair_Display'] text-2xl italic text-gray-900 mb-2">{theme.villaName}</h4>
+        <div className="text-sm text-gray-500 mb-1">{displayCheckIn} — {displayCheckOut}</div>
+        <div className="text-sm text-gray-500 mb-4">{villaCart.guests} Guests</div>
+        
+        <div className="mt-6 bg-gray-50 p-5 rounded-2xl border border-gray-100 flex flex-col gap-3 shadow-sm">
+          <div className="flex justify-between items-center text-sm font-semibold text-gray-900">
+            <span className="font-medium text-gray-700">
+              {breakdown.packageName} <span className="opacity-60 text-xs font-normal">({nights} night{nights > 1 ? 's' : ''})</span>
+            </span>
+            <span>₱{(breakdown.packagePrice * nights).toLocaleString()}</span>
+          </div>
+
+          {breakdown.extraGuests > 0 && (
+            <div className="flex justify-between items-center text-sm font-semibold text-[#C15A3E] pt-3 border-t border-gray-200 border-dashed">
+              <span className="font-medium">Extra Heads (x{breakdown.extraGuests})</span>
+              <span>₱{(breakdown.extraRate * nights).toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {amenitiesCart.length > 0 && (
+        <div className="pt-6 border-t-2 border-dashed border-gray-200">
+          <h4 className="text-[9px] font-bold tracking-[0.15em] uppercase text-gray-400 mb-4">Added Experiences</h4>
+          <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
+            {amenitiesCart.map((item, idx) => (
+              <div key={idx} className="flex justify-between items-start group">
+                <div>
+                  <div className="text-sm font-medium text-gray-800">
+                    {item.name} {item.qty > 1 ? `(x${item.qty})` : ''}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">{item.timeLabel === "Entire Stay" ? "Refundable Deposit" : `${item.date} @ ${item.timeLabel}`}</div>
+                </div>
+                <div className="text-sm font-semibold text-[#C15A3E]">₱{(item.price * (item.qty || 1)).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-[#F9F8F6] pt-[88px] pb-32 lg:pb-0 relative overflow-hidden">
@@ -97,63 +147,13 @@ export default function BookingPage({
         </div>
       </div>
 
-      {/* ─── RIGHT: Sticky Master Cart (Desktop Only) ─── */}
+      {/* ─── RIGHT: Sticky Master Cart (Desktop) ─── */}
       <div className="hidden lg:block w-full lg:w-1/3 bg-white border-l border-gray-100 relative shadow-[-20px_0_40px_rgba(0,0,0,0.02)]">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-[#C15A3E]"></div>
         
         <div className="sticky top-[88px] p-8 md:p-12 flex flex-col h-[calc(100vh-88px)] relative z-10">
           <div className="flex-grow">
-            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#C15A3E] mb-8 border-b-2 border-dashed border-gray-200 pb-4">
-              Reservation Summary
-            </h3>
-            
-            <div className="mb-8">
-              <h4 className="font-['Playfair_Display'] text-2xl italic text-gray-900 mb-2">{theme.villaName}</h4>
-              <div className="text-sm text-gray-500 mb-1">{displayCheckIn} — {displayCheckOut}</div>
-              <div className="text-sm text-gray-500 mb-4">{villaCart.guests} Guests</div>
-              
-              {/* --- UPDATED UI: RATE BREAKDOWN CARD --- */}
-              <div className="mt-6 bg-gray-50 p-5 rounded-2xl border border-gray-100 flex flex-col gap-3 shadow-sm">
-                
-                {/* Base Package Row */}
-                <div className="flex justify-between items-center text-sm font-semibold text-gray-900">
-                  <span className="font-medium text-gray-700">
-                    {breakdown.packageName} <span className="opacity-60 text-xs font-normal">({nights} night{nights > 1 ? 's' : ''})</span>
-                  </span>
-                  <span>₱{(breakdown.packagePrice * nights).toLocaleString()}</span>
-                </div>
-
-                {/* Extra Guests Row (Only shows if extraGuests > 0) */}
-                {breakdown.extraGuests > 0 && (
-                  <div className="flex justify-between items-center text-sm font-semibold text-[#C15A3E] pt-3 border-t border-gray-200 border-dashed">
-                    <span className="font-medium">Extra Heads (x{breakdown.extraGuests})</span>
-                    <span>₱{(breakdown.extraRate * nights).toLocaleString()}</span>
-                  </div>
-                )}
-
-              </div>
-              {/* --------------------------------------- */}
-
-            </div>
-
-            {amenitiesCart.length > 0 && (
-              <div className="pt-6 border-t-2 border-dashed border-gray-200">
-                <h4 className="text-[9px] font-bold tracking-[0.15em] uppercase text-gray-400 mb-4">Added Experiences</h4>
-                <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
-                  {amenitiesCart.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-start group">
-                      <div>
-                        <div className="text-sm font-medium text-gray-800">
-                          {item.name} {item.qty > 1 ? `(x${item.qty})` : ''}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-0.5">{item.timeLabel === "Entire Stay" ? "Refundable Deposit" : `${item.date} @ ${item.timeLabel}`}</div>
-                      </div>
-                      <div className="text-sm font-semibold text-[#C15A3E]">₱{(item.price * (item.qty || 1)).toLocaleString()}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <CartContent />
           </div>
 
           <div className="pt-8 mt-auto border-t-2 border-dashed border-gray-200 bg-white">
@@ -171,10 +171,26 @@ export default function BookingPage({
         </div>
       </div>
 
+      {/* ─── MOBILE DRAWER (Slide Up Cart) ─── */}
+      {showMobileCart && (
+        <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMobileCart(false)}></div>
+          <div className="bg-white w-full rounded-t-3xl p-6 pb-32 relative z-50 animate-slide-up">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <div className="max-h-[60vh] overflow-y-auto">
+              <CartContent />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── MOBILE STICKY FOOTER ─── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 px-6 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] flex justify-between items-center">
-        <div>
-          <div className="text-[9px] font-bold tracking-widest uppercase text-gray-400 mb-1">Total Due</div>
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 px-6 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] flex justify-between items-center">
+        <div onClick={() => setShowMobileCart(!showMobileCart)} className="cursor-pointer group flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <div className="text-[9px] font-bold tracking-widest uppercase text-gray-400 mb-1 group-hover:text-[#C15A3E] transition-colors">Total Due</div>
+            <svg className={`w-3 h-3 text-gray-400 transition-transform ${showMobileCart ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+          </div>
           <div className="font-['Playfair_Display'] text-2xl italic text-[#2A1A12] leading-none">₱{masterTotal.toLocaleString()}</div>
         </div>
         <button 
