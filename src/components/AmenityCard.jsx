@@ -24,7 +24,6 @@ export default function AmenityCard({
   villaCart,
   amenitiesCart = [],
   setAmenitiesCart,
-  liveAmenities,
 }) {
   const isTowel = amenity.id === 'towel_rental';
   const isDeposit = amenity.id === SECURITY_DEPOSIT_ID;
@@ -79,13 +78,7 @@ export default function AmenityCard({
 
       return [...nonDepositItems, normalizedDeposit];
     });
-  }, [
-    amenity.name,
-    amenity.price,
-    isDeposit,
-    setAmenitiesCart,
-    villaCart.checkIn,
-  ]);
+  }, [amenity.name, amenity.price, isDeposit, setAmenitiesCart, villaCart.checkIn]);
 
   const timeSlots = useMemo(() => {
     const slots = [];
@@ -177,8 +170,8 @@ export default function AmenityCard({
   const renderHeaderVisual = () => {
     if (isDeposit || !amenity.image || imageFailed) {
       return (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#2A1A12] via-[#3a2418] to-[#C15A3E]">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-4xl text-white shadow-2xl backdrop-blur-sm">
+        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_25%_25%,rgba(193,90,62,0.35),transparent_35%),linear-gradient(135deg,#2A1A12,#3A2418)]">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 font-display text-5xl italic text-white shadow-2xl backdrop-blur-sm">
             {isDeposit ? '₱' : '✦'}
           </div>
         </div>
@@ -196,50 +189,56 @@ export default function AmenityCard({
   };
 
   return (
-    <div
-      className={`group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 ${
+    <article
+      className={`group flex flex-col overflow-hidden rounded-[28px] border shadow-[0_18px_45px_rgba(42,26,18,0.06)] transition-all duration-300 ${
         isDeposit
-          ? 'border-[#C15A3E]/40 bg-[#C15A3E]/[0.02]'
-          : 'border-gray-100 hover:-translate-y-1 hover:shadow-xl'
+          ? 'border-[#C15A3E]/30 bg-[#FFF9F2]'
+          : 'border-[#2A1A12]/10 bg-[#FFF9F2] hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(42,26,18,0.12)]'
       }`}
     >
-      <div className="relative h-40 overflow-hidden">
+      <div className="relative h-44 overflow-hidden">
         {renderHeaderVisual()}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#2A1A12]/90 via-[#2A1A12]/20 to-transparent" />
 
         {isDeposit && (
-          <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md">
+          <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md">
             Required
           </div>
         )}
 
-        <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between gap-4">
-          <h3 className="font-['Playfair_Display'] text-xl italic leading-tight text-white">
-            {amenity.name}
-          </h3>
+        <div className="absolute bottom-4 left-5 right-5">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="font-display text-2xl font-semibold italic leading-tight text-white">
+              {amenity.name}
+            </h3>
 
-          <span className="shrink-0 rounded-md bg-black/60 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#C15A3E]">
-            {formatPHP(amenity.price)}
-            {!isDeposit && `/${amenity.unit || 'hr'}`}
-          </span>
+            <span className="shrink-0 rounded-full bg-white/12 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#F0B49F] backdrop-blur-md">
+              {formatPHP(amenity.price)}
+              {!isDeposit && `/${amenity.unit || 'hr'}`}
+            </span>
+          </div>
+
+          <p className="line-clamp-2 text-xs leading-5 text-white/65">
+            {amenity.note}
+          </p>
         </div>
       </div>
 
       <div className="flex flex-grow flex-col gap-5 p-5">
         {isDeposit && (
-          <div className="flex flex-col gap-3 rounded-xl border border-[#C15A3E]/20 bg-[#C15A3E]/10 px-4 py-4">
+          <div className="flex flex-col gap-3 rounded-2xl border border-[#C15A3E]/20 bg-[#C15A3E]/[0.07] px-4 py-4">
             <div>
-              <span className="block text-[10px] font-bold uppercase tracking-widest text-[#C15A3E]">
-                Mandatory Refundable Deposit
+              <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#C15A3E]">
+                Automatically Included
               </span>
 
-              <span className="mt-1 block text-xs leading-relaxed text-[#2A1A12]/60">
-                Automatically included once only. Refunded after checkout inspection if there are no damages or unpaid charges.
+              <span className="mt-2 block text-xs leading-6 text-[#2A1A12]/58">
+                Added once to every reservation. Refundable after checkout inspection if there are no damages or unpaid charges.
               </span>
             </div>
 
-            <div className="rounded-lg bg-white/70 px-3 py-2 text-xs font-semibold text-[#2A1A12]">
+            <div className="rounded-xl bg-white/75 px-3 py-2 text-xs font-semibold text-[#2A1A12]">
               Status: Added to reservation
             </div>
           </div>
@@ -248,15 +247,15 @@ export default function AmenityCard({
         {isTowel && (
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-gray-400">
+              <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
                 How many pieces?
               </label>
 
-              <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-1.5">
+              <div className="flex items-center gap-3 rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-1.5">
                 <button
                   type="button"
                   onClick={() => setQty((current) => Math.max(1, current - 1))}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-semibold text-gray-600 shadow-sm transition-colors hover:border-[#C15A3E] hover:text-[#C15A3E]"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#2A1A12]/10 bg-white text-lg font-semibold text-[#2A1A12]/60 shadow-sm transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
                 >
                   -
                 </button>
@@ -268,7 +267,7 @@ export default function AmenityCard({
                 <button
                   type="button"
                   onClick={() => setQty((current) => current + 1)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-semibold text-gray-600 shadow-sm transition-colors hover:border-[#C15A3E] hover:text-[#C15A3E]"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#2A1A12]/10 bg-white text-lg font-semibold text-[#2A1A12]/60 shadow-sm transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
                 >
                   +
                 </button>
@@ -278,10 +277,10 @@ export default function AmenityCard({
             <button
               type="button"
               onClick={() => toggleSlot(0, 'Rental', qty)}
-              className={`w-full rounded-xl py-3.5 text-[10px] font-bold uppercase tracking-widest transition-all ${
+              className={`w-full rounded-2xl py-4 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
                 existingTowel
                   ? 'bg-[#C15A3E] text-white shadow-lg shadow-[#C15A3E]/20'
-                  : 'bg-[#2A1A12] text-[#C15A3E] hover:bg-[#1a100b]'
+                  : 'bg-[#2A1A12] text-[#FFF9F2] hover:bg-[#C15A3E]'
               }`}
             >
               {existingTowel ? `Update Towels to ${qty}` : 'Add to Reservation'}
@@ -292,7 +291,7 @@ export default function AmenityCard({
         {!isDeposit && !isTowel && (
           <>
             <div>
-              <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-gray-400">
+              <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
                 {isLockedDate
                   ? isLateCheckout
                     ? 'Locked to checkout day'
@@ -306,23 +305,23 @@ export default function AmenityCard({
                 disabled={isLockedDate}
                 min={villaCart.checkIn || undefined}
                 max={villaCart.checkOut || undefined}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition-colors ${
+                onChange={(event) => setSelectedDate(event.target.value)}
+                className={`w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none transition ${
                   isLockedDate
-                    ? 'border-gray-100 bg-gray-100 text-gray-400'
-                    : 'border-gray-100 bg-gray-50 text-gray-700 focus:border-[#C15A3E]'
+                    ? 'border-[#2A1A12]/8 bg-[#2A1A12]/5 text-[#2A1A12]/35'
+                    : 'border-[#2A1A12]/10 bg-white text-[#2A1A12] focus:border-[#C15A3E]'
                 }`}
               />
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                  Select time
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
+                  Select Time
                 </span>
 
-                <span className="text-[9px] font-semibold text-gray-400">
-                  Tap again to remove
+                <span className="text-[9px] font-medium text-[#2A1A12]/35">
+                  Tap selected time to remove
                 </span>
               </div>
 
@@ -339,10 +338,10 @@ export default function AmenityCard({
                       type="button"
                       key={val}
                       onClick={() => toggleSlot(val, label)}
-                      className={`relative rounded-lg border py-2.5 text-[10px] font-bold transition-all ${
+                      className={`relative rounded-xl border py-3 text-[10px] font-bold transition ${
                         isInCart
                           ? 'border-[#C15A3E] bg-[#C15A3E] text-white shadow-md shadow-[#C15A3E]/25 ring-2 ring-[#C15A3E]/20'
-                          : 'border-gray-100 bg-white text-gray-500 hover:border-[#C15A3E] hover:text-[#C15A3E]'
+                          : 'border-[#2A1A12]/10 bg-white text-[#2A1A12]/55 hover:border-[#C15A3E]/40 hover:text-[#C15A3E]'
                       }`}
                     >
                       {isInCart && (
@@ -360,6 +359,6 @@ export default function AmenityCard({
           </>
         )}
       </div>
-    </div>
+    </article>
   );
 }

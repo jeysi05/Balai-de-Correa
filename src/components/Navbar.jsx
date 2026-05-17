@@ -13,7 +13,7 @@ export default function Navbar({
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 24);
+      setIsScrolled(window.scrollY > 18);
 
       if (window.scrollY > 90) {
         setIsMenuOpen(false);
@@ -33,7 +33,7 @@ export default function Navbar({
 
     if (!element) return;
 
-    const offset = 86;
+    const offset = 92;
     const bodyRect = document.body.getBoundingClientRect().top;
     const elementRect = element.getBoundingClientRect().top;
     const elementPosition = elementRect - bodyRect;
@@ -47,6 +47,13 @@ export default function Navbar({
 
   const handleReserveClick = () => {
     setIsMenuOpen(false);
+
+    const bookingPanel = document.getElementById('booking-panel');
+
+    if (bookingPanel) {
+      scrollToSection('booking-panel');
+      return;
+    }
 
     const bookingSection = document.getElementById('booking');
 
@@ -82,25 +89,25 @@ export default function Navbar({
     <nav
       className={`fixed left-0 top-0 z-50 w-full border-b transition-all duration-300 ${
         solidNav
-          ? 'border-[#F7EFE6]/10 bg-[#2A1A12]/96 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.18)] backdrop-blur-md'
-          : 'border-transparent bg-transparent py-4 md:py-6'
+          ? 'border-[#2A1A12]/10 bg-[#FFF9F2]/95 py-3 shadow-[0_16px_45px_rgba(42,26,18,0.08)] backdrop-blur-xl'
+          : 'border-transparent bg-[#F6EFE6]/80 py-4 backdrop-blur-sm'
       }`}
     >
       <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4 md:px-6">
         <button
           type="button"
           onClick={handleLogoClick}
-          className="group z-50 flex items-center gap-3 text-left"
+          className="group z-50 flex min-w-0 items-center gap-3 text-left"
         >
           {showBack ? (
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C15A3E] transition-colors hover:text-[#F7EFE6] md:text-[11px]">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C15A3E] transition-colors hover:text-[#2A1A12] md:text-[11px]">
               <span className="mb-1 text-lg leading-none">←</span>
               <span className="hidden sm:block">Back to Home</span>
               <span className="sm:hidden">Back</span>
             </div>
           ) : (
             <>
-              <div className="hidden h-10 w-10 shrink-0 items-center justify-center border border-[#C15A3E]/45 bg-[#2A1A12]/35 text-[#C15A3E] transition-colors group-hover:border-[#C15A3E] sm:flex">
+              <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#C15A3E]/35 bg-[#C15A3E]/10 text-[#C15A3E] transition group-hover:bg-[#C15A3E] group-hover:text-white sm:flex">
                 <svg
                   className="h-5 w-5"
                   viewBox="0 0 24 24"
@@ -113,12 +120,12 @@ export default function Navbar({
                 </svg>
               </div>
 
-              <div>
-                <div className="font-display whitespace-nowrap text-xl italic leading-none text-[#F7EFE6] md:text-2xl">
+              <div className="min-w-0">
+                <div className="font-display whitespace-nowrap text-xl font-semibold italic leading-none text-[#2A1A12] md:text-2xl">
                   {theme.villaName}
                 </div>
 
-                <div className="mt-1 text-[6px] font-bold uppercase tracking-[0.22em] text-[#C15A3E] md:text-[7px]">
+                <div className="mt-1 truncate text-[6px] font-bold uppercase tracking-[0.22em] text-[#C15A3E] md:text-[7px]">
                   {theme.tagline}
                 </div>
               </div>
@@ -131,7 +138,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => scrollToSection('photos')}
-              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/52 transition-colors hover:text-[#C15A3E]"
             >
               Photos
             </button>
@@ -139,7 +146,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => scrollToSection('rates')}
-              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/52 transition-colors hover:text-[#C15A3E]"
             >
               Rates
             </button>
@@ -147,7 +154,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => scrollToSection('policies')}
-              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/52 transition-colors hover:text-[#C15A3E]"
             >
               Policies
             </button>
@@ -155,7 +162,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => scrollToSection('contact')}
-              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/52 transition-colors hover:text-[#C15A3E]"
             >
               Contact
             </button>
@@ -167,25 +174,8 @@ export default function Navbar({
             <>
               <button
                 type="button"
-                onClick={() => setIsMenuOpen((current) => !current)}
-                className="p-1 text-[#C15A3E] focus:outline-none md:hidden"
-                aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-              >
-                {isMenuOpen ? (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                )}
-              </button>
-
-              <button
-                type="button"
                 onClick={onAdminClick}
-                className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/35 transition-colors hover:text-[#C15A3E] md:block"
+                className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35 transition-colors hover:text-[#C15A3E] md:block"
               >
                 Owner Portal
               </button>
@@ -193,9 +183,38 @@ export default function Navbar({
               <button
                 type="button"
                 onClick={handleReserveClick}
-                className="border border-[#C15A3E] bg-[#C15A3E] px-4 py-2.5 text-[9px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-transparent hover:text-[#C15A3E] md:px-6 md:py-3 md:text-[10px]"
+                className="rounded-xl border border-[#C15A3E] bg-[#C15A3E] px-4 py-2.5 text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-[0_12px_25px_rgba(193,90,62,0.22)] transition hover:-translate-y-0.5 hover:bg-[#A34930] md:px-6 md:py-3 md:text-[10px]"
               >
                 Reserve
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((current) => !current)}
+                className="rounded-xl border border-[#2A1A12]/10 bg-[#FFF9F2] p-2 text-[#2A1A12] shadow-sm transition hover:border-[#C15A3E]/30 hover:text-[#C15A3E] md:hidden"
+                aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+              >
+                {isMenuOpen ? (
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+                  </svg>
+                )}
               </button>
             </>
           )}
@@ -203,59 +222,61 @@ export default function Navbar({
       </div>
 
       {!showBack && isMenuOpen && (
-        <div className="absolute left-0 top-full flex w-full origin-top flex-col gap-6 border-b border-[#F7EFE6]/10 bg-[#2A1A12]/98 px-6 py-6 shadow-xl backdrop-blur-md md:hidden">
-          <button
-            type="button"
-            onClick={() => scrollToSection('photos')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
-          >
-            Photos
-          </button>
+        <div className="absolute left-0 top-full w-full border-b border-[#2A1A12]/10 bg-[#FFF9F2]/98 px-4 py-4 shadow-[0_18px_45px_rgba(42,26,18,0.1)] backdrop-blur-xl md:hidden">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => scrollToSection('photos')}
+              className="rounded-2xl px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/65 transition hover:bg-[#F6EFE6] hover:text-[#C15A3E]"
+            >
+              Photos
+            </button>
 
-          <button
-            type="button"
-            onClick={() => scrollToSection('rates')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
-          >
-            Rates
-          </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('rates')}
+              className="rounded-2xl px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/65 transition hover:bg-[#F6EFE6] hover:text-[#C15A3E]"
+            >
+              Rates
+            </button>
 
-          <button
-            type="button"
-            onClick={() => scrollToSection('policies')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
-          >
-            Policies
-          </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('policies')}
+              className="rounded-2xl px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/65 transition hover:bg-[#F6EFE6] hover:text-[#C15A3E]"
+            >
+              Policies
+            </button>
 
-          <button
-            type="button"
-            onClick={() => scrollToSection('contact')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
-          >
-            Contact
-          </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('contact')}
+              className="rounded-2xl px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/65 transition hover:bg-[#F6EFE6] hover:text-[#C15A3E]"
+            >
+              Contact
+            </button>
 
-          <div className="my-1 h-px w-full bg-[#F7EFE6]/10" />
+            <div className="my-2 h-px w-full bg-[#2A1A12]/10" />
 
-          <button
-            type="button"
-            onClick={handleReserveClick}
-            className="bg-[#C15A3E] px-5 py-4 text-left text-[12px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#A34930]"
-          >
-            Start Reservation
-          </button>
+            <button
+              type="button"
+              onClick={handleReserveClick}
+              className="rounded-2xl bg-[#2A1A12] px-5 py-4 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFF9F2] transition hover:bg-[#C15A3E]"
+            >
+              Start Reservation
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsMenuOpen(false);
-              onAdminClick?.();
-            }}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#C15A3E] transition-colors hover:text-[#A34930]"
-          >
-            Owner Portal
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsMenuOpen(false);
+                onAdminClick?.();
+              }}
+              className="rounded-2xl px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-[#C15A3E] transition hover:bg-[#F6EFE6]"
+            >
+              Owner Portal
+            </button>
+          </div>
         </div>
       )}
     </nav>

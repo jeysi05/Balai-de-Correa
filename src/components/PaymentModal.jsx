@@ -11,11 +11,48 @@ function formatPHP(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH')}`;
 }
 
-function calculateNights(checkIn, checkOut) {
-  if (!checkIn || !checkOut) return 1;
+function parseLocalDate(value) {
+  if (!value) return null;
 
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
+  if (value?.toDate) {
+    const date = value.toDate();
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  if (value instanceof Date) {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  if (typeof value === 'string' && value.includes('-')) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  const fallback = new Date(value);
+
+  if (Number.isNaN(fallback.getTime())) return null;
+
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
+}
+
+function formatDisplayDate(dateString) {
+  const date = parseLocalDate(dateString);
+
+  if (!date) return 'TBD';
+
+  return date.toLocaleDateString('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function calculateNights(checkIn, checkOut) {
+  const start = parseLocalDate(checkIn);
+  const end = parseLocalDate(checkOut);
+
+  if (!start || !end) return 1;
+
   const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
 
   return diff > 0 ? diff : 1;
@@ -170,9 +207,16 @@ export default function PaymentModal({
     .filter((item) => item.amenityId === SECURITY_DEPOSIT_ID)
     .reduce((sum, item) => sum + Number(item.price || 0), 0);
 
+  const optionalAddOns = cleanedAmenitiesCart.filter(
+    (item) => item.amenityId !== SECURITY_DEPOSIT_ID
+  );
+
   const masterTotal = basePrice + amenityTotal;
   const amountToSend = masterTotal;
   const paymentDetails = getPaymentDetails(channel);
+
+  const displayCheckIn = formatDisplayDate(villaCart.checkIn);
+  const displayCheckOut = formatDisplayDate(villaCart.checkOut);
 
   const copyNumber = async () => {
     if (!paymentDetails.copyValue) return;
@@ -208,8 +252,8 @@ export default function PaymentModal({
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     if (submitting) return;
 
@@ -286,91 +330,145 @@ export default function PaymentModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-[#2A1A12]/80 backdrop-blur-sm transition-opacity"
-      onClick={(e) => e.target === e.currentTarget && onClose?.()}
+      className="fixed inset-0 z-50 flex bg-[#2A1A12]/78 p-0 backdrop-blur-sm md:justify-end"
+      onClick={(event) => event.target === event.currentTarget && onClose?.()}
     >
-      <div className="flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-[#F9F8F6] text-[#2A1A12] shadow-2xl md:w-[500px]">
-        <div className="custom-scrollbar flex-grow overflow-y-auto p-6 md:p-10">
-          <div className="mb-10 flex items-start justify-between">
-            <div>
-              <h2 className="mb-2 font-display text-3xl italic leading-none text-[#C15A3E]">
-                Payment Instructions
-              </h2>
+      <div className="flex h-full w-full flex-col overflow-hidden bg-[#F6EFE6] text-[#2A1A12] shadow-[0_30px_90px_rgba(0,0,0,0.35)] md:w-[560px] md:border-l md:border-white/10">
+        <div className="flex items-start justify-between border-b border-[#2A1A12]/10 bg-[#FFF9F2]/95 px-5 py-4 backdrop-blur-xl md:px-8 md:py-5">
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#C15A3E]">
+              Step 3 of 3
+            </p>
 
-              <p className="font-sans text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                Step 3 of 3 · Manual Verification
-              </p>
-            </div>
+            <h2 className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
+              Payment information.
+            </h2>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-2xl text-gray-300 transition-colors hover:text-black"
-              aria-label="Close payment modal"
-            >
-              ✕
-            </button>
+            <p className="mt-3 max-w-sm text-xs leading-6 text-[#2A1A12]/50">
+              Send payment through your selected channel, then submit the last 6 digits of your payment reference for owner verification.
+            </p>
           </div>
 
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2A1A12]/10 bg-white text-[#2A1A12]/45 transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
+            aria-label="Close payment modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="custom-scrollbar flex-grow overflow-y-auto px-5 pb-36 pt-5 md:px-8 md:pb-40 md:pt-6">
           {error && (
-            <div className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-xs leading-relaxed text-red-600">
+            <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 p-4 text-xs leading-relaxed text-red-600">
               {error}
             </div>
           )}
 
-          <div className="relative mb-8 overflow-hidden rounded-3xl bg-[#2A1A12] p-8 text-white shadow-xl">
-            <div className="relative z-10">
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C15A3E]">
+          <section className="mb-4 overflow-hidden rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] shadow-[0_18px_45px_rgba(42,26,18,0.06)]">
+            <div className="bg-[#2A1A12] p-6 text-[#FFF9F2]">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#C15A3E]">
                 Total Amount to Send
               </div>
 
-              <div className="mb-3 font-display text-5xl italic">
+              <div className="font-display text-5xl italic leading-none">
                 {formatPHP(amountToSend)}
               </div>
 
-              <div className="mt-1 flex items-start gap-2 border-t border-white/10 pt-3">
-                <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#C15A3E] text-[10px] font-bold text-white">
-                  !
+              <p className="mt-4 text-xs leading-6 text-white/55">
+                This amount is submitted for manual verification. Your reservation is not confirmed until the owner verifies the payment reference.
+              </p>
+            </div>
+
+            <div className="space-y-3 p-5">
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="text-[#2A1A12]/55">
+                  Base stay · {breakdown.packageName}
+                </span>
+
+                <span className="font-semibold text-[#2A1A12]">
+                  {formatPHP(basePrice)}
+                </span>
+              </div>
+
+              {optionalAddOns.length > 0 && (
+                <div className="border-t border-[#2A1A12]/10 pt-3">
+                  <div className="mb-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                    Selected Add-ons
+                  </div>
+
+                  <div className="space-y-2">
+                    {optionalAddOns.map((item) => {
+                      const qty = Number(item.qty || 1);
+                      const lineTotal = Number(item.price || 0) * qty;
+
+                      return (
+                        <div
+                          key={`${item.amenityId}-${item.date || 'stay'}-${item.timeVal || item.timeLabel || 'item'}`}
+                          className="flex items-start justify-between gap-4 rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-3"
+                        >
+                          <div>
+                            <div className="text-sm font-semibold text-[#2A1A12]">
+                              {item.name} {qty > 1 ? `(x${qty})` : ''}
+                            </div>
+
+                            <div className="mt-1 text-xs text-[#2A1A12]/45">
+                              {item.timeLabel || 'Selected service'}
+                            </div>
+                          </div>
+
+                          <div className="whitespace-nowrap text-sm font-bold text-[#C15A3E]">
+                            {formatPHP(lineTotal)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#C15A3E]/20 bg-[#C15A3E]/[0.07] p-4 text-sm">
+                <div>
+                  <div className="font-semibold text-[#2A1A12]">
+                    Refundable security deposit
+                  </div>
+
+                  <div className="mt-1 text-xs leading-5 text-[#2A1A12]/45">
+                    Returned after checkout inspection if there are no damages or unpaid charges.
+                  </div>
                 </div>
 
-                <p className="text-[11px] italic leading-relaxed text-white/70">
-                  Includes{' '}
-                  <strong className="font-semibold text-white">
-                    {formatPHP(securityDeposit || 5000)} refundable security deposit
-                  </strong>
-                  , returned after checkout inspection if there are no damages or unpaid charges.
-                </p>
+                <span className="whitespace-nowrap font-bold text-[#C15A3E]">
+                  {formatPHP(securityDeposit || 5000)}
+                </span>
               </div>
             </div>
+          </section>
 
-            <div className="absolute -bottom-4 -right-4 select-none font-serif text-9xl italic text-white/5">
-              ₱
+          <section className="mb-4 rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-4 shadow-[0_18px_45px_rgba(42,26,18,0.05)]">
+            <div className="mb-4 grid grid-cols-3 gap-2">
+              {CHANNELS.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => {
+                    setChannel(item);
+                    setCopied(false);
+                  }}
+                  className={`rounded-2xl border px-2 py-3 text-[9px] font-bold uppercase tracking-[0.14em] transition-all ${
+                    channel === item
+                      ? 'border-[#C15A3E] bg-[#C15A3E] text-white shadow-[0_12px_25px_rgba(193,90,62,0.22)]'
+                      : 'border-[#2A1A12]/10 bg-white text-[#2A1A12]/45 hover:border-[#C15A3E]/40 hover:text-[#C15A3E]'
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
-          </div>
 
-          <div className="mb-8 grid grid-cols-3 gap-2">
-            {CHANNELS.map((item) => (
-              <button
-                type="button"
-                key={item}
-                onClick={() => {
-                  setChannel(item);
-                  setCopied(false);
-                }}
-                className={`rounded-xl border-2 py-3 text-[10px] font-bold uppercase tracking-widest transition-all ${
-                  channel === item
-                    ? 'border-[#C15A3E] bg-white text-[#C15A3E] shadow-md'
-                    : 'border-gray-100 text-gray-400 hover:border-gray-200'
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div className="mb-8 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-            <div className="mb-6 flex flex-col items-center">
-              <div className="mb-5 flex h-48 w-48 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 p-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-[180px_1fr] md:items-center">
+              <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-[24px] border border-[#2A1A12]/10 bg-white p-3 shadow-inner md:h-44 md:w-44">
                 {paymentDetails.qrImage ? (
                   <img
                     src={paymentDetails.qrImage}
@@ -378,18 +476,18 @@ export default function PaymentModal({
                     className="h-full w-full object-contain"
                   />
                 ) : (
-                  <div className="px-4 text-center text-xs leading-relaxed text-gray-400">
-                    QR image not configured yet. Please use the account details below.
+                  <div className="px-4 text-center text-xs leading-relaxed text-[#2A1A12]/40">
+                    QR image is not configured yet. Please use the account details.
                   </div>
                 )}
               </div>
 
-              <div className="text-center">
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <div className="text-center md:text-left">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#2A1A12]/35">
                   {paymentDetails.label}
                 </div>
 
-                <div className="mb-4 text-lg font-bold text-[#2A1A12]">
+                <div className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
                   {paymentDetails.name}
                 </div>
 
@@ -397,89 +495,105 @@ export default function PaymentModal({
                   <button
                     type="button"
                     onClick={copyNumber}
-                    className="rounded-full bg-gray-100 px-6 py-2 text-xs font-bold text-gray-600 transition-all hover:bg-[#C15A3E]/10 hover:text-[#C15A3E]"
+                    className="mt-4 rounded-full border border-[#2A1A12]/10 bg-[#F6EFE6] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#2A1A12]/55 transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
                   >
-                    {copied ? '✓ Copied' : paymentDetails.display}
+                    {copied ? 'Copied' : paymentDetails.display}
                   </button>
                 )}
+
+                <div className="mt-4 rounded-2xl border border-[#C15A3E]/15 bg-[#C15A3E]/[0.06] p-4 text-xs leading-6 text-[#2A1A12]/62">
+                  {paymentDetails.instruction}
+                </div>
               </div>
             </div>
+          </section>
 
-            <div className="rounded-2xl border border-[#C15A3E]/15 bg-[#C15A3E]/5 p-4 text-xs leading-relaxed text-[#2A1A12]/70">
-              {paymentDetails.instruction}
-            </div>
-          </div>
+          <section className="rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5 shadow-[0_18px_45px_rgba(42,26,18,0.05)]">
+            <div className="mb-5">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#C15A3E]">
+                Guest Details
+              </p>
 
-          <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                Full Guest Name
-              </label>
+              <h3 className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
+                Submit your payment reference.
+              </h3>
 
-              <input
-                type="text"
-                required
-                value={guestDetails.name}
-                onChange={(e) => updateGuestField('name', e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-sm outline-none transition-colors focus:border-[#C15A3E]"
-                placeholder="Juan Dela Cruz"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                Mobile Number for Confirmation
-              </label>
-
-              <input
-                type="tel"
-                required
-                value={guestDetails.contact}
-                onChange={(e) => updateGuestField('contact', e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-sm outline-none transition-colors focus:border-[#C15A3E]"
-                placeholder="0917 123 4567"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                Last 6 Digits of Payment Reference
-              </label>
-
-              <input
-                type="text"
-                required
-                inputMode="numeric"
-                maxLength={6}
-                value={guestDetails.refNo}
-                onChange={(e) =>
-                  updateGuestField('refNo', e.target.value.replace(/\D/g, ''))
-                }
-                className="w-full rounded-xl border border-gray-200 bg-white p-4 font-mono text-sm outline-none transition-colors focus:border-[#C15A3E]"
-                placeholder="000000"
-              />
-
-              <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
-                Your booking will be marked as pending until the owner verifies this payment manually.
+              <p className="mt-3 text-xs leading-6 text-[#2A1A12]/50">
+                The owner will use these details to match your payment and confirm the booking.
               </p>
             </div>
-          </form>
+
+            <form id="checkout-form" onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
+                  Full Guest Name
+                </label>
+
+                <input
+                  type="text"
+                  required
+                  value={guestDetails.name}
+                  onChange={(event) => updateGuestField('name', event.target.value)}
+                  className="w-full rounded-2xl border border-[#2A1A12]/10 bg-white p-4 text-sm text-[#2A1A12] outline-none transition focus:border-[#C15A3E]"
+                  placeholder="Juan Dela Cruz"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
+                  Mobile Number for Confirmation
+                </label>
+
+                <input
+                  type="tel"
+                  required
+                  value={guestDetails.contact}
+                  onChange={(event) => updateGuestField('contact', event.target.value)}
+                  className="w-full rounded-2xl border border-[#2A1A12]/10 bg-white p-4 text-sm text-[#2A1A12] outline-none transition focus:border-[#C15A3E]"
+                  placeholder="0917 123 4567"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
+                  Last 6 Digits of Payment Reference
+                </label>
+
+                <input
+                  type="text"
+                  required
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={guestDetails.refNo}
+                  onChange={(event) =>
+                    updateGuestField('refNo', event.target.value.replace(/\D/g, ''))
+                  }
+                  className="w-full rounded-2xl border border-[#2A1A12]/10 bg-white p-4 font-mono text-sm tracking-[0.18em] text-[#2A1A12] outline-none transition focus:border-[#C15A3E]"
+                  placeholder="000000"
+                />
+
+                <p className="mt-2 text-[11px] leading-relaxed text-[#2A1A12]/45">
+                  Your booking will stay pending until the owner verifies this payment manually.
+                </p>
+              </div>
+            </form>
+          </section>
         </div>
 
-        <div className="border-t border-gray-100 bg-white p-6 md:p-8">
+        <div className="border-t border-[#2A1A12]/10 bg-[#FFF9F2]/95 p-5 shadow-[0_-18px_45px_rgba(42,26,18,0.1)] backdrop-blur-xl md:p-6">
           <button
             type="submit"
             form="checkout-form"
             disabled={submitting}
-            className={`w-full rounded-2xl bg-[#2A1A12] py-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#C15A3E] shadow-xl transition-all ${
+            className={`w-full rounded-2xl bg-[#2A1A12] px-6 py-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#FFF9F2] shadow-[0_16px_35px_rgba(42,26,18,0.22)] transition ${
               submitting
                 ? 'cursor-wait opacity-50'
-                : 'hover:-translate-y-0.5 hover:bg-black'
+                : 'hover:-translate-y-0.5 hover:bg-[#C15A3E]'
             }`}
           >
             {submitting
-              ? 'Submitting for Verification...'
-              : `Submit Payment for Verification · ${formatPHP(amountToSend)}`}
+              ? 'Submitting Reference...'
+              : `Submit Payment Reference · ${formatPHP(amountToSend)}`}
           </button>
         </div>
       </div>
