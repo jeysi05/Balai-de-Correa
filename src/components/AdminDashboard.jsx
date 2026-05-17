@@ -12,7 +12,7 @@ import {
 import theme from '../theme.config';
 
 const FILTERS = [
-  { id: 'pending_payment', label: 'Needs Verification' },
+  { id: 'pending_payment', label: 'Needs Review' },
   { id: 'confirmed', label: 'Confirmed' },
   { id: 'cancelled', label: 'Cancelled' },
   { id: 'all', label: 'All' },
@@ -20,19 +20,19 @@ const FILTERS = [
 
 const VIEWS = [
   {
-    id: 'reservations',
-    label: 'Reservations',
-    description: 'Verify payments and manage guest requests.',
+    id: 'requests',
+    label: 'Requests',
+    description: 'Review room requests, guest details, and payment references.',
   },
   {
     id: 'calendar',
     label: 'Calendar',
-    description: 'See blocked and upcoming stay dates.',
+    description: 'See requested and confirmed stay dates.',
   },
   {
     id: 'insights',
     label: 'Insights',
-    description: 'Review real booking revenue and pipeline.',
+    description: 'Review confirmed revenue and pending request value.',
   },
 ];
 
@@ -131,7 +131,7 @@ function getStatusMeta(status) {
   }
 
   return {
-    label: 'Needs Verification',
+    label: 'Needs Review',
     dot: 'bg-amber-500',
     badge: 'bg-amber-50 text-amber-700 border-amber-200',
     card: 'border-amber-200',
@@ -149,6 +149,39 @@ function reservationOverlapsDate(reservation, date) {
 
 function getMonthKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getRoomName(reservation) {
+  return (
+    reservation.roomTypeName ||
+    reservation.roomName ||
+    reservation.package ||
+    reservation.selectedRoom ||
+    'Room to confirm'
+  );
+}
+
+function getPaymentStatusText(reservation) {
+  if (reservation.status === 'confirmed') return 'Confirmed by owner';
+  if (reservation.status === 'cancelled') return 'Cancelled';
+
+  if (reservation.paymentStatus === 'pending_verification') {
+    return 'Payment reference submitted';
+  }
+
+  if (reservation.paymentStatus === 'pending_owner_review') {
+    return 'Rate and availability to confirm';
+  }
+
+  return 'Needs owner review';
+}
+
+function getReservationAmountLabel(reservation) {
+  const amount = Number(reservation.totalPrice || reservation.amountPaid || 0);
+
+  if (amount > 0) return formatPHP(amount);
+
+  return 'To confirm';
 }
 
 function AdminLogin({ onLogin, onBack }) {
@@ -211,7 +244,7 @@ function AdminLogin({ onLogin, onBack }) {
         </h1>
 
         <p className="mx-auto mt-4 max-w-xs text-sm leading-7 text-white/45">
-          Enter the owner access code to review booking requests and verify payments.
+          Enter the owner access code to review room requests, payment references, and confirmed stays.
         </p>
 
         <input
@@ -244,7 +277,9 @@ function StatusBadge({ status }) {
   const meta = getStatusMeta(status);
 
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${meta.badge}`}>
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${meta.badge}`}
+    >
       <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
       {meta.label}
     </span>
@@ -255,7 +290,13 @@ function EmptyState({ title, description }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-[#2A1A12]/15 bg-white/60 px-6 py-16 text-center">
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2A1A12]/5 text-[#2A1A12]/30">
-        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+        <svg
+          className="h-7 w-7"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -264,15 +305,20 @@ function EmptyState({ title, description }) {
         </svg>
       </div>
 
-      <h3 className="font-display text-3xl font-semibold italic text-[#2A1A12]">{title}</h3>
-      <p className="mt-2 max-w-sm text-sm leading-7 text-[#2A1A12]/50">{description}</p>
+      <h3 className="font-display text-3xl font-semibold italic text-[#2A1A12]">
+        {title}
+      </h3>
+
+      <p className="mt-2 max-w-sm text-sm leading-7 text-[#2A1A12]/50">
+        {description}
+      </p>
     </div>
   );
 }
 
 export default function AdminDashboard({ onLogout, onBack }) {
   const [authed, setAuthed] = useState(false);
-  const [currentView, setCurrentView] = useState('reservations');
+  const [currentView, setCurrentView] = useState('requests');
   const [reservations, setReservations] = useState([]);
   const [amenities, setAmenities] = useState([]);
   const [filter, setFilter] = useState('pending_payment');
@@ -287,11 +333,21 @@ export default function AdminDashboard({ onLogout, onBack }) {
     );
 
     const unsubReservations = onSnapshot(reservationsQuery, (snapshot) => {
-      setReservations(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
+      setReservations(
+        snapshot.docs.map((document) => ({
+          id: document.id,
+          ...document.data(),
+        }))
+      );
     });
 
     const unsubAmenities = onSnapshot(collection(db, 'amenity_bookings'), (snapshot) => {
-      setAmenities(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
+      setAmenities(
+        snapshot.docs.map((document) => ({
+          id: document.id,
+          ...document.data(),
+        }))
+      );
     });
 
     return () => {
@@ -389,11 +445,17 @@ export default function AdminDashboard({ onLogout, onBack }) {
       .filter((reservation) => reservationOverlapsDate(reservation, date));
   };
 
-  const handleVerifyPayment = async (reservation) => {
+  const getLinkedAmenities = (reservationId) => {
+    return amenities.filter((amenity) => amenity.reservation_id === reservationId);
+  };
+
+  const handleConfirmRequest = async (reservation) => {
     const confirmed = window.confirm(
-      `Verify payment for ${reservation.guestName || 'this guest'}?\n\nReference: ${
-        reservation.referenceNo || 'No reference'
-      }\nAmount: ${formatPHP(reservation.totalPrice)}`
+      `Confirm request for ${reservation.guestName || 'this guest'}?\n\nRoom: ${getRoomName(
+        reservation
+      )}\nDates: ${formatDateRange(reservation.checkIn, reservation.checkOut)}\nAmount: ${getReservationAmountLabel(
+        reservation
+      )}`
     );
 
     if (!confirmed) return;
@@ -401,13 +463,13 @@ export default function AdminDashboard({ onLogout, onBack }) {
     try {
       await updateDoc(doc(db, 'villa_reservations', reservation.id), {
         status: 'confirmed',
-        paymentStatus: 'verified',
+        paymentStatus:
+          Number(reservation.totalPrice || 0) > 0 ? 'verified' : 'owner_confirmed',
         verifiedAt: new Date().toISOString(),
+        confirmedAt: new Date().toISOString(),
       });
 
-      const linkedAmenities = amenities.filter(
-        (amenity) => amenity.reservation_id === reservation.id
-      );
+      const linkedAmenities = getLinkedAmenities(reservation.id);
 
       await Promise.all(
         linkedAmenities.map((amenity) =>
@@ -418,13 +480,13 @@ export default function AdminDashboard({ onLogout, onBack }) {
       );
     } catch (error) {
       console.error(error);
-      alert('Payment could not be verified. Please try again.');
+      alert('Request could not be confirmed. Please try again.');
     }
   };
 
   const handleCancel = async (reservation) => {
     const confirmed = window.confirm(
-      `Cancel reservation for ${reservation.guestName || 'this guest'}?`
+      `Cancel request for ${reservation.guestName || 'this guest'}?`
     );
 
     if (!confirmed) return;
@@ -432,12 +494,11 @@ export default function AdminDashboard({ onLogout, onBack }) {
     try {
       await updateDoc(doc(db, 'villa_reservations', reservation.id), {
         status: 'cancelled',
+        paymentStatus: 'cancelled',
         cancelledAt: new Date().toISOString(),
       });
 
-      const linkedAmenities = amenities.filter(
-        (amenity) => amenity.reservation_id === reservation.id
-      );
+      const linkedAmenities = getLinkedAmenities(reservation.id);
 
       await Promise.all(
         linkedAmenities.map((amenity) =>
@@ -448,31 +509,37 @@ export default function AdminDashboard({ onLogout, onBack }) {
       );
     } catch (error) {
       console.error(error);
-      alert('Reservation could not be cancelled. Please try again.');
+      alert('Request could not be cancelled. Please try again.');
     }
   };
 
   const handleDelete = async (reservation) => {
     const confirmed = window.confirm(
-      `Permanently delete the record for ${reservation.guestName || 'this guest'}?\n\nThis cannot be undone.`
+      `Permanently delete request for ${reservation.guestName || 'this guest'}?`
     );
 
     if (!confirmed) return;
 
     try {
-      await deleteDoc(doc(db, 'villa_reservations', reservation.id));
-
-      const linkedAmenities = amenities.filter(
-        (amenity) => amenity.reservation_id === reservation.id
-      );
+      const linkedAmenities = getLinkedAmenities(reservation.id);
 
       await Promise.all(
         linkedAmenities.map((amenity) => deleteDoc(doc(db, 'amenity_bookings', amenity.id)))
       );
+
+      await deleteDoc(doc(db, 'villa_reservations', reservation.id));
     } catch (error) {
       console.error(error);
-      alert('Record could not be deleted. Please try again.');
+      alert('Request could not be deleted. Please try again.');
     }
+  };
+
+  const previousMonth = () => {
+    setCalMonth(new Date(currentYear, currentMonthIdx - 1, 1));
+  };
+
+  const nextMonth = () => {
+    setCalMonth(new Date(currentYear, currentMonthIdx + 1, 1));
   };
 
   if (!authed) {
@@ -485,7 +552,7 @@ export default function AdminDashboard({ onLogout, onBack }) {
         <div className="flex items-center justify-between gap-4 lg:block">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#C15A3E]/35 bg-white/5 font-display text-2xl italic text-[#C15A3E]">
-              {theme.villaName?.charAt(0) || 'B'}
+              {theme.villaName?.charAt(0) || 'E'}
             </div>
 
             <div>
@@ -541,203 +608,299 @@ export default function AdminDashboard({ onLogout, onBack }) {
           </div>
 
           <p className="mt-3 text-sm leading-7 text-white/45">
-            booking request{pendingReservations.length === 1 ? '' : 's'} waiting for manual payment verification.
+            room request{pendingReservations.length === 1 ? '' : 's'} waiting for owner review.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onLogout}
-          className="mt-8 hidden text-[11px] font-bold uppercase tracking-[0.18em] text-white/35 transition hover:text-white lg:block"
-        >
-          Log out
-        </button>
+        <div className="mt-8 hidden lg:block">
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-full rounded-2xl border border-white/10 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/40 transition hover:border-white/20 hover:text-white"
+          >
+            Back to Website
+          </button>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="mt-3 w-full rounded-2xl bg-white/[0.05] px-4 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/40 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            Logout
+          </button>
+        </div>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-10">
-        {currentView === 'reservations' && (
+      <main className="min-w-0 flex-1 p-4 md:p-8">
+        {currentView === 'requests' && (
           <div className="mx-auto max-w-7xl">
-            <div className="mb-8 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+            <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[#C15A3E]">
-                  Reservation Queue
+                  Room Requests
                 </p>
 
                 <h2 className="font-display text-5xl font-semibold italic leading-none tracking-[-0.035em] md:text-6xl">
-                  Owner workspace.
+                  Owner review.
                 </h2>
 
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-[#2A1A12]/58">
-                  Review new booking requests, match the payment reference, then confirm the stay once payment is verified.
+                  Review guest stay requests, selected room type, preferred dates, add-ons, and payment reference status.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={onBack}
-                className="w-fit rounded-2xl border border-[#2A1A12]/10 bg-[#FFF9F2] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/60 transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
-              >
-                View Website
-              </button>
-            </div>
+              <div className="grid grid-cols-3 gap-3 md:min-w-[420px]">
+                <div className="rounded-[24px] bg-[#2A1A12] p-5 text-[#FFF9F2]">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#C15A3E]">
+                    Needs Review
+                  </div>
 
-            <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[24px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/38">
-                  Needs Verification
+                  <div className="font-display mt-2 text-4xl italic">
+                    {pendingReservations.length}
+                  </div>
                 </div>
 
-                <div className="font-display mt-3 text-5xl italic leading-none text-[#C15A3E]">
-                  {pendingReservations.length}
-                </div>
-              </div>
+                <div className="rounded-[24px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                    Confirmed
+                  </div>
 
-              <div className="rounded-[24px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/38">
-                  Confirmed Stays
-                </div>
-
-                <div className="font-display mt-3 text-5xl italic leading-none">
-                  {upcomingConfirmed.length}
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/38">
-                  Confirmed Revenue
+                  <div className="font-display mt-2 text-4xl italic text-[#2A1A12]">
+                    {confirmedReservations.length}
+                  </div>
                 </div>
 
-                <div className="font-display mt-3 text-4xl italic leading-none">
-                  {formatPHP(totalRevenue)}
-                </div>
-              </div>
+                <div className="rounded-[24px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                    Cancelled
+                  </div>
 
-              <div className="rounded-[24px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/38">
-                  Pending Pipeline
-                </div>
-
-                <div className="font-display mt-3 text-4xl italic leading-none text-[#C15A3E]">
-                  {formatPHP(pipelineRevenue)}
+                  <div className="font-display mt-2 text-4xl italic text-[#2A1A12]">
+                    {cancelledReservations.length}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="mb-6 flex gap-2 overflow-x-auto rounded-[24px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-2">
-              {FILTERS.map((item) => {
-                const count =
-                  item.id === 'all'
-                    ? reservations.length
-                    : reservations.filter((reservation) => reservation.status === item.id).length;
-
-                return (
-                  <button
-                    type="button"
-                    key={item.id}
-                    onClick={() => setFilter(item.id)}
-                    className={`min-w-max rounded-2xl px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
-                      filter === item.id
-                        ? 'bg-[#2A1A12] text-[#FFF9F2]'
-                        : 'text-[#2A1A12]/45 hover:bg-[#2A1A12]/5 hover:text-[#2A1A12]'
-                    }`}
-                  >
-                    {item.label}
-                    <span className="ml-2 opacity-60">{count}</span>
-                  </button>
-                );
-              })}
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
+              {FILTERS.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => setFilter(item.id)}
+                  className={`min-w-max rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                    filter === item.id
+                      ? 'border-[#C15A3E] bg-[#C15A3E] text-white'
+                      : 'border-[#2A1A12]/10 bg-[#FFF9F2] text-[#2A1A12]/45 hover:border-[#C15A3E]/40 hover:text-[#C15A3E]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
 
-            <div className="space-y-4">
-              {filteredReservations.map((reservation) => {
-                const statusMeta = getStatusMeta(reservation.status);
-                const childAmenities = amenities.filter(
-                  (amenity) => amenity.reservation_id === reservation.id
-                );
-                const nights = calculateNights(reservation.checkIn, reservation.checkOut);
+            {filteredReservations.length === 0 ? (
+              <EmptyState
+                title="No requests here yet."
+                description="New room requests will appear here after guests submit the reservation form."
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {filteredReservations.map((reservation) => {
+                  const linkedAmenities = getLinkedAmenities(reservation.id);
+                  const statusMeta = getStatusMeta(reservation.status);
+                  const totalPrice = Number(reservation.totalPrice || 0);
+                  const basePrice = Number(reservation.basePrice || 0);
+                  const amenityTotal = Number(reservation.amenityTotal || 0);
+                  const securityDeposit = Number(reservation.securityDeposit || 0);
 
-                return (
-                  <article
-                    key={reservation.id}
-                    className={`overflow-hidden rounded-[28px] border bg-[#FFF9F2] shadow-[0_18px_50px_rgba(42,26,18,0.06)] ${statusMeta.card}`}
-                  >
-                    <div className="grid grid-cols-1 gap-6 p-5 lg:grid-cols-[1.1fr_0.8fr_auto] lg:items-center lg:p-7">
-                      <div>
-                        <div className="mb-3 flex flex-wrap items-center gap-3">
-                          <h3 className="text-xl font-bold text-[#2A1A12]">
-                            {reservation.guestName || 'Unnamed Guest'}
+                  return (
+                    <article
+                      key={reservation.id}
+                      className={`rounded-[30px] border bg-[#FFF9F2] p-5 shadow-[0_18px_45px_rgba(42,26,18,0.06)] ${statusMeta.card}`}
+                    >
+                      <div className="mb-5 flex items-start justify-between gap-4">
+                        <div>
+                          <StatusBadge status={reservation.status} />
+
+                          <h3 className="mt-4 font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
+                            {reservation.guestName || 'Guest Request'}
                           </h3>
 
-                          <StatusBadge status={reservation.status} />
+                          <p className="mt-2 text-sm leading-6 text-[#2A1A12]/55">
+                            {reservation.guestContact || 'No contact provided'}
+                          </p>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 text-sm text-[#2A1A12]/58 sm:grid-cols-2">
+                        <div className="text-right">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                            Request Value
+                          </div>
+
+                          <div className="font-display mt-1 text-3xl italic leading-none text-[#2A1A12]">
+                            {getReservationAmountLabel(reservation)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-4">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                            Selected Room
+                          </div>
+
+                          <div className="mt-1 text-sm font-bold text-[#2A1A12]">
+                            {getRoomName(reservation)}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-4">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                            Stay Dates
+                          </div>
+
+                          <div className="mt-1 text-sm font-bold text-[#2A1A12]">
+                            {formatDateRange(reservation.checkIn, reservation.checkOut)}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-4">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                            Guests
+                          </div>
+
+                          <div className="mt-1 text-sm font-bold text-[#2A1A12]">
+                            {reservation.guests || 2} guest
+                            {Number(reservation.guests || 2) > 1 ? 's' : ''}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-4">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                            Status
+                          </div>
+
+                          <div className="mt-1 text-sm font-bold text-[#2A1A12]">
+                            {getPaymentStatusText(reservation)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-[#C15A3E]/20 bg-[#C15A3E]/[0.06] p-4">
+                        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                           <div>
-                            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
-                              Stay Dates
+                            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#C15A3E]">
+                              Reference
                             </div>
 
-                            <div className="mt-1 font-medium text-[#2A1A12]">
-                              {formatDateRange(reservation.checkIn, reservation.checkOut)}
-                            </div>
-
-                            <div className="mt-1 text-xs text-[#2A1A12]/45">
-                              {nights || 1} night{(nights || 1) > 1 ? 's' : ''} · {reservation.guests || 0} guest{Number(reservation.guests || 0) === 1 ? '' : 's'}
+                            <div className="mt-1 font-semibold text-[#2A1A12]">
+                              {reservation.referenceNo || 'No reference'}
                             </div>
                           </div>
 
                           <div>
-                            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
-                              Guest Contact
+                            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#C15A3E]">
+                              Channel
                             </div>
 
-                            <div className="mt-1 font-medium text-[#2A1A12]">
-                              {reservation.guestContact || 'No contact saved'}
+                            <div className="mt-1 font-semibold text-[#2A1A12]">
+                              {reservation.paymentChannel || 'To be confirmed'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {reservation.guestNote && (
+                          <div className="mt-4 border-t border-[#C15A3E]/15 pt-4">
+                            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#C15A3E]">
+                              Guest Note
                             </div>
 
-                            <div className="mt-1 text-xs text-[#2A1A12]/45">
-                              Requested {formatDateTime(reservation.createdAt)}
+                            <p className="mt-1 text-sm leading-6 text-[#2A1A12]/60">
+                              {reservation.guestNote}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-[#2A1A12]/10 bg-white p-4">
+                        <div className="mb-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                          Price Breakdown
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-[#2A1A12]/55">Room rate</span>
+                            <span className="font-semibold text-[#2A1A12]">
+                              {basePrice > 0 ? formatPHP(basePrice) : 'To confirm'}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between gap-4">
+                            <span className="text-[#2A1A12]/55">Add-ons</span>
+                            <span className="font-semibold text-[#2A1A12]">
+                              {amenityTotal > 0 ? formatPHP(amenityTotal) : 'None / to confirm'}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between gap-4">
+                            <span className="text-[#2A1A12]/55">Security deposit</span>
+                            <span className="font-semibold text-[#2A1A12]">
+                              {securityDeposit > 0 ? formatPHP(securityDeposit) : 'To confirm'}
+                            </span>
+                          </div>
+
+                          <div className="border-t border-[#2A1A12]/10 pt-2">
+                            <div className="flex justify-between gap-4">
+                              <span className="font-bold text-[#2A1A12]">Total</span>
+                              <span className="font-bold text-[#C15A3E]">
+                                {totalPrice > 0 ? formatPHP(totalPrice) : 'To confirm'}
+                              </span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-[#2A1A12]/10 bg-white p-4">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
-                          Payment Reference
-                        </div>
-
-                        <div className="mt-2 flex items-center justify-between gap-4">
-                          <div>
-                            <div className="font-mono text-lg font-bold tracking-[0.1em] text-[#C15A3E]">
-                              {reservation.referenceNo || '—'}
-                            </div>
-
-                            <div className="mt-1 text-xs text-[#2A1A12]/45">
-                              {reservation.paymentChannel || 'Payment channel not saved'}
-                            </div>
+                      {linkedAmenities.length > 0 && (
+                        <div className="mt-4 rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-4">
+                          <div className="mb-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                            Add-ons / Requests
                           </div>
 
-                          <div className="text-right">
-                            <div className="font-display text-3xl italic leading-none">
-                              {formatPHP(reservation.totalPrice)}
-                            </div>
+                          <div className="space-y-2">
+                            {linkedAmenities.map((amenity) => (
+                              <div
+                                key={amenity.id}
+                                className="flex justify-between gap-4 rounded-xl bg-white px-3 py-2 text-sm"
+                              >
+                                <div>
+                                  <div className="font-semibold text-[#2A1A12]">
+                                    {amenity.name || amenity.amenityName || 'Add-on'}
+                                  </div>
 
-                            <div className="mt-1 text-[9px] uppercase tracking-[0.16em] text-[#2A1A12]/35">
-                              total
-                            </div>
+                                  <div className="text-xs text-[#2A1A12]/45">
+                                    {amenity.timeLabel || amenity.date || 'Selected'}
+                                  </div>
+                                </div>
+
+                                <div className="font-semibold text-[#C15A3E]">
+                                  {Number(amenity.price || 0) > 0
+                                    ? formatPHP(Number(amenity.price || 0) * Number(amenity.qty || 1))
+                                    : 'To confirm'}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="flex flex-col gap-2 lg:min-w-[190px]">
-                        {reservation.status === 'pending_payment' && (
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                        {reservation.status !== 'confirmed' && reservation.status !== 'cancelled' && (
                           <button
                             type="button"
-                            onClick={() => handleVerifyPayment(reservation)}
-                            className="rounded-2xl bg-[#2A1A12] px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFF9F2] transition hover:bg-[#C15A3E]"
+                            onClick={() => handleConfirmRequest(reservation)}
+                            className="flex-1 rounded-2xl bg-[#2A1A12] px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFF9F2] transition hover:bg-[#C15A3E]"
                           >
-                            Verify Payment
+                            Confirm Request
                           </button>
                         )}
 
@@ -745,7 +908,7 @@ export default function AdminDashboard({ onLogout, onBack }) {
                           <button
                             type="button"
                             onClick={() => handleCancel(reservation)}
-                            className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-red-600 transition hover:bg-red-100"
+                            className="flex-1 rounded-2xl border border-[#2A1A12]/10 bg-white px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/50 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                           >
                             Cancel
                           </button>
@@ -754,107 +917,52 @@ export default function AdminDashboard({ onLogout, onBack }) {
                         <button
                           type="button"
                           onClick={() => handleDelete(reservation)}
-                          className="rounded-2xl border border-[#2A1A12]/10 bg-white px-5 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/40 transition hover:border-[#2A1A12]/25 hover:text-[#2A1A12]"
+                          className="rounded-2xl border border-[#2A1A12]/10 bg-white px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35 transition hover:border-red-200 hover:text-red-600"
                         >
-                          Delete Record
+                          Delete
                         </button>
                       </div>
-                    </div>
 
-                    {childAmenities.length > 0 && (
-                      <div className="border-t border-[#2A1A12]/10 bg-[#F6EFE6] p-5 lg:px-7">
-                        <div className="mb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/38">
-                          Add-ons & Deposit
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                          {childAmenities.map((amenity) => (
-                            <div
-                              key={amenity.id}
-                              className="rounded-2xl border border-[#2A1A12]/10 bg-[#FFF9F2] p-4"
-                            >
-                              <div className="font-semibold text-[#2A1A12]">{amenity.name}</div>
-
-                              <div className="mt-1 text-xs leading-6 text-[#2A1A12]/50">
-                                {amenity.timeLabel === 'Entire Stay'
-                                  ? 'Entire stay'
-                                  : `${amenity.date || 'Selected date'} · ${
-                                      amenity.timeLabel || 'Selected time'
-                                    }`}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                      <div className="mt-4 border-t border-[#2A1A12]/10 pt-4 text-xs text-[#2A1A12]/38">
+                        Created {formatDateTime(reservation.createdAt)}
                       </div>
-                    )}
-                  </article>
-                );
-              })}
-
-              {filteredReservations.length === 0 && (
-                <EmptyState
-                  title="No bookings here yet."
-                  description="Once guests submit booking requests, they will appear in this queue."
-                />
-              )}
-            </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {currentView === 'calendar' && (
           <div className="mx-auto max-w-7xl">
-            <div className="mb-8 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-              <div>
-                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[#C15A3E]">
-                  Availability Calendar
-                </p>
+            <div className="mb-8">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[#C15A3E]">
+                Calendar
+              </p>
 
-                <h2 className="font-display text-5xl font-semibold italic leading-none tracking-[-0.035em] md:text-6xl">
-                  Booking calendar.
-                </h2>
+              <h2 className="font-display text-5xl font-semibold italic leading-none tracking-[-0.035em] md:text-6xl">
+                Stay dates.
+              </h2>
 
-                <p className="mt-4 max-w-2xl text-sm leading-7 text-[#2A1A12]/58">
-                  Confirmed and pending reservations appear here so owners can quickly see blocked dates.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                disabled={!theme.calendarSyncUrl}
-                onClick={() => {
-                  if (!theme.calendarSyncUrl) {
-                    alert('Calendar sync URL is not configured yet.');
-                    return;
-                  }
-
-                  navigator.clipboard.writeText(theme.calendarSyncUrl);
-                  alert('Calendar sync URL copied.');
-                }}
-                className={`w-fit rounded-2xl px-5 py-3 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
-                  theme.calendarSyncUrl
-                    ? 'bg-[#2A1A12] text-[#FFF9F2] hover:bg-[#C15A3E]'
-                    : 'cursor-not-allowed border border-[#2A1A12]/10 bg-[#FFF9F2] text-[#2A1A12]/35'
-                }`}
-              >
-                {theme.calendarSyncUrl ? 'Copy Sync URL' : 'Sync URL Not Configured'}
-              </button>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#2A1A12]/58">
+                Pending and confirmed room requests appear here. Cancelled requests are hidden.
+              </p>
             </div>
 
-            <div className="overflow-hidden rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] shadow-[0_20px_60px_rgba(42,26,18,0.06)]">
-              <div className="flex items-center justify-between border-b border-[#2A1A12]/10 p-4 sm:p-6">
+            <div className="overflow-hidden rounded-[30px] border border-[#2A1A12]/10 bg-[#FFF9F2] shadow-[0_24px_70px_rgba(42,26,18,0.08)]">
+              <div className="flex items-center justify-between border-b border-[#2A1A12]/10 p-4 md:p-6">
                 <button
                   type="button"
-                  onClick={() => setCalMonth(new Date(currentYear, currentMonthIdx - 1, 1))}
-                  className="rounded-xl border border-[#2A1A12]/10 bg-white p-2 text-[#2A1A12]/55 transition hover:border-[#C15A3E] hover:text-[#C15A3E]"
+                  onClick={previousMonth}
+                  className="rounded-xl border border-[#2A1A12]/12 bg-white p-2 text-[#2A1A12]/60 transition hover:border-[#C15A3E] hover:text-[#C15A3E]"
                   aria-label="Previous month"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                  </svg>
+                  ←
                 </button>
 
-                <h3 className="text-center text-sm font-bold uppercase tracking-[0.2em] text-[#2A1A12] sm:text-xl">
-                  {calMonth.toLocaleDateString('en-PH', {
+                <h3 className="text-center text-sm font-bold uppercase tracking-[0.2em] text-[#2A1A12] md:text-xl">
+                  {calMonth.toLocaleString('default', {
                     month: 'long',
                     year: 'numeric',
                   })}
@@ -862,21 +970,19 @@ export default function AdminDashboard({ onLogout, onBack }) {
 
                 <button
                   type="button"
-                  onClick={() => setCalMonth(new Date(currentYear, currentMonthIdx + 1, 1))}
-                  className="rounded-xl border border-[#2A1A12]/10 bg-white p-2 text-[#2A1A12]/55 transition hover:border-[#C15A3E] hover:text-[#C15A3E]"
+                  onClick={nextMonth}
+                  className="rounded-xl border border-[#2A1A12]/12 bg-white p-2 text-[#2A1A12]/60 transition hover:border-[#C15A3E] hover:text-[#C15A3E]"
                   aria-label="Next month"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
+                  →
                 </button>
               </div>
 
-              <div className="grid grid-cols-7 border-b border-[#2A1A12]/10 bg-[#F6EFE6]">
+              <div className="grid grid-cols-7 border-b border-[#2A1A12]/10 bg-[#FFF9F2]">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                   <div
                     key={day}
-                    className="py-3 text-center text-[9px] font-bold uppercase tracking-[0.14em] text-[#2A1A12]/35"
+                    className="py-3 text-center text-[9px] font-bold uppercase tracking-[0.14em] text-[#2A1A12]/35 md:py-4 md:text-[10px]"
                   >
                     {day}
                   </div>
@@ -885,28 +991,21 @@ export default function AdminDashboard({ onLogout, onBack }) {
 
               <div className="grid grid-cols-7 gap-px bg-[#2A1A12]/10">
                 {blanks.map((_, index) => (
-                  <div key={`blank-${index}`} className="min-h-[72px] bg-white p-1 sm:min-h-[120px] sm:p-2" />
+                  <div
+                    key={`blank-${index}`}
+                    className="min-h-[88px] bg-white p-2 md:min-h-[120px]"
+                  />
                 ))}
 
                 {days.map((day) => {
                   const dayBookings = getBookingsForDate(day);
-                  const isToday =
-                    new Date().getDate() === day &&
-                    new Date().getMonth() === currentMonthIdx &&
-                    new Date().getFullYear() === currentYear;
 
                   return (
                     <div
                       key={day}
-                      className={`min-h-[72px] bg-white p-1 sm:min-h-[120px] sm:p-2 ${
-                        isToday ? 'bg-amber-50' : ''
-                      }`}
+                      className="min-h-[88px] bg-white p-2 md:min-h-[120px]"
                     >
-                      <div
-                        className={`mb-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold sm:h-8 sm:w-8 ${
-                          isToday ? 'bg-[#C15A3E] text-white' : 'text-[#2A1A12]/70'
-                        }`}
-                      >
+                      <div className="mb-2 text-sm font-semibold text-[#2A1A12]/65">
                         {day}
                       </div>
 
@@ -919,9 +1018,9 @@ export default function AdminDashboard({ onLogout, onBack }) {
                                 ? 'bg-[#2A1A12] text-white'
                                 : 'bg-amber-100 text-amber-700'
                             }`}
-                            title={`${booking.guestName} · ${booking.guests} guests`}
+                            title={`${booking.guestName || 'Guest'} · ${getRoomName(booking)}`}
                           >
-                            {booking.guestName?.split(' ')[0] || 'Guest'}
+                            {(booking.guestName || 'Guest').split(' ')[0]} · {getRoomName(booking)}
                           </div>
                         ))}
 
@@ -947,11 +1046,11 @@ export default function AdminDashboard({ onLogout, onBack }) {
               </p>
 
               <h2 className="font-display text-5xl font-semibold italic leading-none tracking-[-0.035em] md:text-6xl">
-                Revenue overview.
+                Request overview.
               </h2>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[#2A1A12]/58">
-                These numbers are calculated from actual saved reservations. No fake growth percentages.
+                These numbers are calculated from actual saved room requests. Requests with unknown rates are still counted, but not added to revenue.
               </p>
             </div>
 
@@ -966,7 +1065,8 @@ export default function AdminDashboard({ onLogout, onBack }) {
                 </div>
 
                 <p className="mt-4 text-sm leading-7 text-white/45">
-                  From {confirmedReservations.length} confirmed booking{confirmedReservations.length === 1 ? '' : 's'}.
+                  From {confirmedReservations.length} confirmed request
+                  {confirmedReservations.length === 1 ? '' : 's'}.
                 </p>
               </div>
 
@@ -976,55 +1076,67 @@ export default function AdminDashboard({ onLogout, onBack }) {
                 </div>
 
                 <div className="font-display mt-4 text-5xl italic leading-none text-[#C15A3E]">
-                  {formatPHP(pipelineRevenue)}
+                  {pipelineRevenue > 0 ? formatPHP(pipelineRevenue) : 'To confirm'}
                 </div>
 
                 <p className="mt-4 text-sm leading-7 text-[#2A1A12]/50">
-                  From {pendingReservations.length} booking request{pendingReservations.length === 1 ? '' : 's'} waiting for verification.
+                  From {pendingReservations.length} room request
+                  {pendingReservations.length === 1 ? '' : 's'} waiting for review.
                 </p>
               </div>
 
               <div className="rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-7">
                 <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#2A1A12]/38">
-                  Average Confirmed Booking
+                  Average Confirmed
                 </div>
 
-                <div className="font-display mt-4 text-5xl italic leading-none">
+                <div className="font-display mt-4 text-5xl italic leading-none text-[#2A1A12]">
                   {formatPHP(averageConfirmedBooking)}
                 </div>
 
                 <p className="mt-4 text-sm leading-7 text-[#2A1A12]/50">
-                  Based only on confirmed reservations.
+                  Based only on confirmed requests with saved amounts.
                 </p>
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-6 md:p-8">
-              <div className="mb-8 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+            <div className="rounded-[30px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-6 md:p-8">
+              <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#2A1A12]/38">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#C15A3E]">
                     Last 6 Months
-                  </div>
+                  </p>
 
-                  <h3 className="font-display mt-2 text-3xl font-semibold italic">
-                    Confirmed revenue by check-in month.
+                  <h3 className="font-display text-3xl font-semibold italic text-[#2A1A12]">
+                    Confirmed request value.
                   </h3>
                 </div>
+
+                <p className="text-sm text-[#2A1A12]/45">
+                  Upcoming confirmed stays: {upcomingConfirmed.length}
+                </p>
               </div>
 
-              <div className="flex h-64 items-end gap-3 border-b border-[#2A1A12]/10 pb-3">
+              <div className="flex h-72 items-end gap-3">
                 {monthBuckets.map((bucket) => {
-                  const height = Math.max(8, (bucket.amount / maxMonthAmount) * 100);
+                  const height = `${Math.max(6, (bucket.amount / maxMonthAmount) * 100)}%`;
 
                   return (
-                    <div key={bucket.key} className="flex h-full flex-1 flex-col justify-end">
-                      <div className="group relative flex flex-1 items-end">
+                    <div key={bucket.key} className="flex flex-1 flex-col items-center gap-3">
+                      <div className="flex h-56 w-full items-end rounded-2xl bg-[#F6EFE6] p-2">
                         <div
-                          className="w-full rounded-t-2xl bg-[#2A1A12]/10 transition hover:bg-[#C15A3E]"
-                          style={{ height: `${height}%` }}
+                          className="w-full rounded-xl bg-[#C15A3E]"
+                          style={{ height }}
+                          title={formatPHP(bucket.amount)}
                         />
+                      </div>
 
-                        <div className="pointer-events-none absolute -top-10 left-1/2 hidden -translate-x-1/2 rounded-xl bg-[#2A1A12] px-3 py-2 text-[10px] font-bold text-white shadow-xl group-hover:block">
+                      <div className="text-center">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#2A1A12]/45">
+                          {bucket.label}
+                        </div>
+
+                        <div className="mt-1 text-xs font-semibold text-[#2A1A12]">
                           {formatPHP(bucket.amount)}
                         </div>
                       </div>
@@ -1032,22 +1144,7 @@ export default function AdminDashboard({ onLogout, onBack }) {
                   );
                 })}
               </div>
-
-              <div className="mt-4 flex justify-between text-[10px] font-bold uppercase tracking-[0.16em] text-[#2A1A12]/35">
-                {monthBuckets.map((bucket) => (
-                  <span key={bucket.key}>{bucket.label}</span>
-                ))}
-              </div>
             </div>
-
-            {reservations.length === 0 && (
-              <div className="mt-6">
-                <EmptyState
-                  title="No data yet."
-                  description="Analytics will become useful once test or real reservations are submitted."
-                />
-              </div>
-            )}
           </div>
         )}
       </main>
