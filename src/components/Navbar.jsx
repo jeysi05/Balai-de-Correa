@@ -13,9 +13,9 @@ export default function Navbar({
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 30);
+      setIsScrolled(window.scrollY > 24);
 
-      if (window.scrollY > 80) {
+      if (window.scrollY > 90) {
         setIsMenuOpen(false);
       }
     };
@@ -33,7 +33,7 @@ export default function Navbar({
 
     if (!element) return;
 
-    const offset = 84;
+    const offset = 86;
     const bodyRect = document.body.getBoundingClientRect().top;
     const elementRect = element.getBoundingClientRect().top;
     const elementPosition = elementRect - bodyRect;
@@ -45,7 +45,7 @@ export default function Navbar({
     });
   };
 
-  const handleBookClick = () => {
+  const handleReserveClick = () => {
     setIsMenuOpen(false);
 
     const bookingSection = document.getElementById('booking');
@@ -82,7 +82,7 @@ export default function Navbar({
     <nav
       className={`fixed left-0 top-0 z-50 w-full border-b transition-all duration-300 ${
         solidNav
-          ? 'border-white/10 bg-[#2A1A12]/95 py-3 shadow-lg backdrop-blur-md'
+          ? 'border-[#F7EFE6]/10 bg-[#2A1A12]/96 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.18)] backdrop-blur-md'
           : 'border-transparent bg-transparent py-4 md:py-6'
       }`}
     >
@@ -90,23 +90,23 @@ export default function Navbar({
         <button
           type="button"
           onClick={handleLogoClick}
-          className="group z-50 flex items-center gap-2 text-left md:gap-3"
+          className="group z-50 flex items-center gap-3 text-left"
         >
           {showBack ? (
-            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#C15A3E] transition-colors hover:text-white md:gap-2 md:text-[11px]">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C15A3E] transition-colors hover:text-[#F7EFE6] md:text-[11px]">
               <span className="mb-1 text-lg leading-none">←</span>
               <span className="hidden sm:block">Back to Home</span>
               <span className="sm:hidden">Back</span>
             </div>
           ) : (
             <>
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[#C15A3E]/50 bg-[#2A1A12]/50 transition-colors group-hover:border-[#C15A3E] md:h-10 md:w-10">
+              <div className="hidden h-10 w-10 shrink-0 items-center justify-center border border-[#C15A3E]/45 bg-[#2A1A12]/35 text-[#C15A3E] transition-colors group-hover:border-[#C15A3E] sm:flex">
                 <svg
-                  className="h-4 w-4 md:h-5 md:w-5"
+                  className="h-5 w-5"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#C15A3E"
-                  strokeWidth="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.45"
                 >
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                   <polyline points="9 22 9 12 15 12 15 22" />
@@ -114,11 +114,11 @@ export default function Navbar({
               </div>
 
               <div>
-                <div className="whitespace-nowrap font-['Playfair_Display'] text-lg italic leading-none text-white md:text-xl">
+                <div className="font-display whitespace-nowrap text-xl italic leading-none text-[#F7EFE6] md:text-2xl">
                   {theme.villaName}
                 </div>
 
-                <div className="mt-1 text-[6px] font-bold uppercase tracking-[0.2em] text-[#C15A3E] md:mt-1.5 md:text-[7px]">
+                <div className="mt-1 text-[6px] font-bold uppercase tracking-[0.22em] text-[#C15A3E] md:text-[7px]">
                   {theme.tagline}
                 </div>
               </div>
@@ -130,16 +130,16 @@ export default function Navbar({
           <div className="hidden items-center gap-8 md:flex">
             <button
               type="button"
-              onClick={() => scrollToSection('gallery')}
-              className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/60 transition-colors hover:text-white"
+              onClick={() => scrollToSection('photos')}
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
             >
-              Gallery
+              Photos
             </button>
 
             <button
               type="button"
               onClick={() => scrollToSection('rates')}
-              className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/60 transition-colors hover:text-white"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
             >
               Rates
             </button>
@@ -147,7 +147,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => scrollToSection('policies')}
-              className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/60 transition-colors hover:text-white"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
             >
               Policies
             </button>
@@ -155,7 +155,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => scrollToSection('contact')}
-              className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/60 transition-colors hover:text-white"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/58 transition-colors hover:text-[#F7EFE6]"
             >
               Contact
             </button>
@@ -185,17 +185,17 @@ export default function Navbar({
               <button
                 type="button"
                 onClick={onAdminClick}
-                className="hidden text-[9px] font-bold uppercase tracking-[0.15em] text-white/40 transition-colors hover:text-[#C15A3E] md:block"
+                className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/35 transition-colors hover:text-[#C15A3E] md:block"
               >
-                Owner Login
+                Owner Portal
               </button>
 
               <button
                 type="button"
-                onClick={handleBookClick}
-                className="whitespace-nowrap rounded-sm bg-[#C15A3E] px-4 py-2.5 text-[9px] font-bold uppercase tracking-[0.15em] text-white shadow-md transition-colors hover:bg-[#A34930] md:px-6 md:py-3 md:text-[10px]"
+                onClick={handleReserveClick}
+                className="border border-[#C15A3E] bg-[#C15A3E] px-4 py-2.5 text-[9px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-transparent hover:text-[#C15A3E] md:px-6 md:py-3 md:text-[10px]"
               >
-                Book Now
+                Reserve
               </button>
             </>
           )}
@@ -203,19 +203,19 @@ export default function Navbar({
       </div>
 
       {!showBack && isMenuOpen && (
-        <div className="absolute left-0 top-full flex w-full origin-top flex-col gap-6 border-b border-white/10 bg-[#2A1A12]/95 px-6 py-6 shadow-xl backdrop-blur-md md:hidden">
+        <div className="absolute left-0 top-full flex w-full origin-top flex-col gap-6 border-b border-[#F7EFE6]/10 bg-[#2A1A12]/98 px-6 py-6 shadow-xl backdrop-blur-md md:hidden">
           <button
             type="button"
-            onClick={() => scrollToSection('gallery')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.15em] text-white/80 transition-colors hover:text-white"
+            onClick={() => scrollToSection('photos')}
+            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
           >
-            Gallery
+            Photos
           </button>
 
           <button
             type="button"
             onClick={() => scrollToSection('rates')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.15em] text-white/80 transition-colors hover:text-white"
+            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
           >
             Rates
           </button>
@@ -223,7 +223,7 @@ export default function Navbar({
           <button
             type="button"
             onClick={() => scrollToSection('policies')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.15em] text-white/80 transition-colors hover:text-white"
+            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
           >
             Policies
           </button>
@@ -231,17 +231,17 @@ export default function Navbar({
           <button
             type="button"
             onClick={() => scrollToSection('contact')}
-            className="text-left text-[12px] font-bold uppercase tracking-[0.15em] text-white/80 transition-colors hover:text-white"
+            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#F7EFE6]/80 transition-colors hover:text-white"
           >
             Contact
           </button>
 
-          <div className="my-1 h-px w-full bg-white/10" />
+          <div className="my-1 h-px w-full bg-[#F7EFE6]/10" />
 
           <button
             type="button"
-            onClick={handleBookClick}
-            className="rounded-xl bg-[#C15A3E] px-5 py-4 text-left text-[12px] font-bold uppercase tracking-[0.15em] text-white transition-colors hover:bg-[#A34930]"
+            onClick={handleReserveClick}
+            className="bg-[#C15A3E] px-5 py-4 text-left text-[12px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#A34930]"
           >
             Start Reservation
           </button>
@@ -252,16 +252,9 @@ export default function Navbar({
               setIsMenuOpen(false);
               onAdminClick?.();
             }}
-            className="flex items-center gap-2 text-left text-[12px] font-bold uppercase tracking-[0.15em] text-[#C15A3E] transition-colors hover:text-[#A34930]"
+            className="text-left text-[12px] font-bold uppercase tracking-[0.18em] text-[#C15A3E] transition-colors hover:text-[#A34930]"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-            Owner Login
+            Owner Portal
           </button>
         </div>
       )}
