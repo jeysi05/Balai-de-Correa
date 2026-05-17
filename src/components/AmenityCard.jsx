@@ -19,14 +19,26 @@ function formatTime(time) {
   };
 }
 
+function getAddOnType(amenityId) {
+  if (amenityId === SECURITY_DEPOSIT_ID) return 'deposit';
+  if (amenityId === 'early_checkin') return 'time';
+  if (amenityId === 'late_checkout') return 'time';
+  if (amenityId === 'extra_guest') return 'quantity';
+  if (amenityId === 'extra_bedding') return 'quantity';
+
+  return 'quantity';
+}
+
 export default function AmenityCard({
   amenity,
   villaCart,
   amenitiesCart = [],
   setAmenitiesCart,
 }) {
-  const isTowel = amenity.id === 'towel_rental';
-  const isDeposit = amenity.id === SECURITY_DEPOSIT_ID;
+  const addOnType = getAddOnType(amenity.id);
+  const isDeposit = addOnType === 'deposit';
+  const isQuantity = addOnType === 'quantity';
+  const isTime = addOnType === 'time';
   const isEarlyCheckIn = amenity.id === 'early_checkin';
   const isLateCheckout = amenity.id === 'late_checkout';
   const isLockedDate = isEarlyCheckIn || isLateCheckout;
@@ -61,7 +73,7 @@ export default function AmenityCard({
         name: amenity.name || 'Refundable Security Deposit',
         date: villaCart.checkIn,
         timeLabel: 'Entire Stay',
-        price: Number(amenity.price || 5000),
+        price: Number(amenity.price || 0),
         qty: 1,
         isMandatory: true,
       };
@@ -99,17 +111,54 @@ export default function AmenityCard({
       return slots;
     }
 
-    for (let i = 8; i <= 21; i += 1) {
-      slots.push(i);
-    }
-
     return slots;
   }, [isEarlyCheckIn, isLateCheckout]);
 
-  const existingTowel = amenitiesCart.find((item) => item.amenityId === amenity.id);
+  const existingQuantityItem = amenitiesCart.find((item) => item.amenityId === amenity.id);
   const currentDateForSelection = isLockedDate ? lockedDate : selectedDate;
 
-  const toggleSlot = (timeVal, timeLabel, customQty = 1) => {
+  const toggleQuantityItem = () => {
+    if (!villaCart.checkIn) {
+      alert('Please select stay dates first.');
+      return;
+    }
+
+    if (existingQuantityItem) {
+      setAmenitiesCart((prev = []) =>
+        prev.map((item) =>
+          item.amenityId === amenity.id
+            ? {
+                ...item,
+                qty,
+                price: Number(amenity.price || 0),
+                date: villaCart.checkIn,
+                timeLabel: `${qty} ${qty === 1 ? 'item' : 'items'}`,
+              }
+            : item
+        )
+      );
+
+      return;
+    }
+
+    setAmenitiesCart((prev = []) => [
+      ...prev,
+      {
+        amenityId: amenity.id,
+        name: amenity.name,
+        date: villaCart.checkIn,
+        timeLabel: `${qty} ${qty === 1 ? 'item' : 'items'}`,
+        price: Number(amenity.price || 0),
+        qty,
+      },
+    ]);
+  };
+
+  const removeQuantityItem = () => {
+    setAmenitiesCart((prev = []) => prev.filter((item) => item.amenityId !== amenity.id));
+  };
+
+  const toggleSlot = (timeVal, timeLabel) => {
     if (isDeposit) return;
 
     if (!currentDateForSelection) {
@@ -117,38 +166,18 @@ export default function AmenityCard({
       return;
     }
 
-    const existingItem = amenitiesCart.find((item) => {
-      if (isTowel) return item.amenityId === amenity.id;
-
-      return item.amenityId === amenity.id && item.timeVal === timeVal;
-    });
+    const existingItem = amenitiesCart.find(
+      (item) => item.amenityId === amenity.id && item.timeVal === timeVal
+    );
 
     if (existingItem) {
-      if (isTowel) {
-        setAmenitiesCart((prev = []) =>
-          prev.map((item) =>
-            item.amenityId === amenity.id
-              ? {
-                  ...item,
-                  qty: customQty,
-                  price: Number(amenity.price || 0),
-                  date: currentDateForSelection,
-                  timeLabel: 'Rental',
-                }
-              : item
-          )
-        );
-
-        return;
-      }
-
       setAmenitiesCart((prev = []) => prev.filter((item) => item !== existingItem));
       return;
     }
 
     setAmenitiesCart((prev = []) => {
       const filtered =
-        isEarlyCheckIn || isLateCheckout || isTowel
+        isEarlyCheckIn || isLateCheckout
           ? prev.filter((item) => item.amenityId !== amenity.id)
           : prev;
 
@@ -161,7 +190,7 @@ export default function AmenityCard({
           timeVal,
           timeLabel,
           price: Number(amenity.price || 0),
-          qty: customQty,
+          qty: 1,
         },
       ];
     });
@@ -215,7 +244,7 @@ export default function AmenityCard({
 
             <span className="shrink-0 rounded-full bg-white/12 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#F0B49F] backdrop-blur-md">
               {formatPHP(amenity.price)}
-              {!isDeposit && `/${amenity.unit || 'hr'}`}
+              {!isDeposit && `/${amenity.unit || 'item'}`}
             </span>
           </div>
 
@@ -234,7 +263,7 @@ export default function AmenityCard({
               </span>
 
               <span className="mt-2 block text-xs leading-6 text-[#2A1A12]/58">
-                Added once to every reservation. Refundable after checkout inspection if there are no damages or unpaid charges.
+                Added once to every reservation request. Final policy can be adjusted once the owner confirms the official security deposit.
               </span>
             </div>
 
@@ -244,11 +273,11 @@ export default function AmenityCard({
           </div>
         )}
 
-        {isTowel && (
+        {isQuantity && (
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
-                How many pieces?
+                Quantity
               </label>
 
               <div className="flex items-center gap-3 rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-1.5">
@@ -274,21 +303,51 @@ export default function AmenityCard({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => toggleSlot(0, 'Rental', qty)}
-              className={`w-full rounded-2xl py-4 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
-                existingTowel
-                  ? 'bg-[#C15A3E] text-white shadow-lg shadow-[#C15A3E]/20'
-                  : 'bg-[#2A1A12] text-[#FFF9F2] hover:bg-[#C15A3E]'
-              }`}
-            >
-              {existingTowel ? `Update Towels to ${qty}` : 'Add to Reservation'}
-            </button>
+            <div className="rounded-2xl border border-[#2A1A12]/10 bg-[#F6EFE6] p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                    Add-on total
+                  </div>
+
+                  <div className="mt-1 text-xs text-[#2A1A12]/45">
+                    {qty} × {formatPHP(amenity.price)}
+                  </div>
+                </div>
+
+                <div className="font-display text-2xl italic leading-none text-[#2A1A12]">
+                  {formatPHP(Number(amenity.price || 0) * qty)}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={toggleQuantityItem}
+                className={`w-full rounded-2xl py-4 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
+                  existingQuantityItem
+                    ? 'bg-[#C15A3E] text-white shadow-lg shadow-[#C15A3E]/20'
+                    : 'bg-[#2A1A12] text-[#FFF9F2] hover:bg-[#C15A3E]'
+                }`}
+              >
+                {existingQuantityItem ? 'Update Add-on' : 'Add to Request'}
+              </button>
+
+              {existingQuantityItem && (
+                <button
+                  type="button"
+                  onClick={removeQuantityItem}
+                  className="w-full rounded-2xl border border-[#2A1A12]/10 bg-white py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/45 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </div>
         )}
 
-        {!isDeposit && !isTowel && (
+        {isTime && (
           <>
             <div>
               <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">

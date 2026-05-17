@@ -4,7 +4,7 @@ import { commitMasterBooking } from '../firebase';
 import theme from '../theme.config';
 import BookingSuccessModal from './BookingSuccessModal';
 
-const CHANNELS = ['GCash', 'PayMaya', 'Bank Transfer'];
+const CHANNELS = ['GCash', 'PayMaya'];
 const SECURITY_DEPOSIT_ID = 'security_dep';
 
 function formatPHP(amount) {
@@ -58,38 +58,56 @@ function calculateNights(checkIn, checkOut) {
   return diff > 0 ? diff : 1;
 }
 
-function getRateBreakdown(guestCount) {
-  const guests = parseInt(guestCount, 10) || 2;
-
-  if (guests <= 3) {
-    return {
-      packageName: 'Tres Package',
-      packagePrice: 9000,
-      extraGuests: 0,
-      extraRate: 0,
-    };
+function getRoomTypes() {
+  if (Array.isArray(theme.roomTypes) && theme.roomTypes.length > 0) {
+    return theme.roomTypes;
   }
 
-  if (guests <= 6) {
-    return {
-      packageName: 'Seis Package',
-      packagePrice: 13500,
-      extraGuests: 0,
-      extraRate: 0,
-    };
-  }
-
-  const extraGuests = Math.max(0, guests - 12);
-
-  return {
-    packageName: 'Doce Package',
-    packagePrice: 20500,
-    extraGuests,
-    extraRate: extraGuests * 1500,
-  };
+  return [
+    {
+      id: 'family_cabin',
+      name: 'Family Cabin',
+      shortName: 'Family',
+      note: 'Family-friendly room for relaxed group stays.',
+      capacity: 'Capacity to confirm',
+      price: 0,
+      per: 'request',
+    },
+  ];
 }
 
-function sanitizeAmenitiesCart(items = []) {
+function getSuggestedRoomType(guestCount) {
+  const guests = parseInt(guestCount, 10) || 2;
+  const rooms = getRoomTypes();
+
+  if (guests <= 4) {
+    return rooms.find((room) => room.id === 'deluxe_cabin') || rooms[0];
+  }
+
+  if (guests <= 8) {
+    return rooms.find((room) => room.id === 'family_cabin') || rooms[0];
+  }
+
+  return rooms.find((room) => room.id === 'bohemian_suite') || rooms[0];
+}
+
+function getRoomById(roomTypeId, guestCount) {
+  const rooms = getRoomTypes();
+
+  if (roomTypeId) {
+    const room = rooms.find((item) => item.id === roomTypeId);
+
+    if (room) return room;
+  }
+
+  return getSuggestedRoomType(guestCount);
+}
+
+function getSecurityDepositAmenity() {
+  return (theme.hourlyAmenities || []).find((item) => item.id === SECURITY_DEPOSIT_ID);
+}
+
+function sanitizeAmenitiesCart(items = [], villaCart = {}) {
   const cleaned = [];
   const seenKeys = new Set();
   let depositSeen = false;
@@ -112,16 +130,27 @@ function sanitizeAmenitiesCart(items = []) {
       return;
     }
 
-    const isTowel = item.amenityId === 'towel_rental';
-    const key = isTowel
-      ? item.amenityId
-      : `${item.amenityId}-${item.date || ''}-${item.timeVal ?? item.timeLabel ?? ''}`;
+    const key = `${item.amenityId}-${item.date || 'stay'}-${item.timeVal ?? item.timeLabel ?? 'item'}`;
 
     if (seenKeys.has(key)) return;
 
     seenKeys.add(key);
     cleaned.push(item);
   });
+
+  const securityDeposit = getSecurityDepositAmenity();
+
+  if (securityDeposit && !depositSeen && villaCart.checkIn) {
+    cleaned.push({
+      amenityId: SECURITY_DEPOSIT_ID,
+      name: securityDeposit.name || 'Security Deposit',
+      date: villaCart.checkIn,
+      timeLabel: 'Entire Stay',
+      price: Number(securityDeposit.price || 0),
+      qty: 1,
+      isMandatory: true,
+    });
+  }
 
   return cleaned;
 }
@@ -135,19 +164,7 @@ function getPaymentDetails(channel) {
       display: theme.mayaDisplay || theme.gcashDisplay || 'Copy account details',
       copyValue: theme.mayaNumber || theme.gcashNumber || '',
       instruction:
-        'Send the exact amount through PayMaya, then enter the last 6 digits of your transaction reference below.',
-    };
-  }
-
-  if (channel === 'Bank Transfer') {
-    return {
-      qrImage: theme.instaPayQR,
-      label: 'Bank Transfer Details',
-      name: theme.bankName || theme.gcashName || theme.villaName,
-      display: theme.bankDisplay || theme.gcashDisplay || 'Copy account details',
-      copyValue: theme.bankNumber || theme.gcashNumber || '',
-      instruction:
-        'Send the exact amount through bank transfer, then enter the last 6 digits of your transfer reference below.',
+        'Send the amount shown, then enter the last 6 digits of your PayMaya transaction reference below.',
     };
   }
 
@@ -158,7 +175,7 @@ function getPaymentDetails(channel) {
     display: theme.gcashDisplay || theme.gcashNumber || 'Copy GCash number',
     copyValue: theme.gcashNumber || '',
     instruction:
-      'Send the exact amount through GCash, then enter the last 6 digits of your GCash reference number below.',
+      'Send the amount shown through GCash, then enter the last 6 digits of your GCash reference number below.',
   };
 }
 
@@ -173,6 +190,7 @@ export default function PaymentModal({
     name: '',
     contact: '',
     refNo: '',
+    note: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -187,14 +205,16 @@ export default function PaymentModal({
     };
   }, []);
 
-  const cleanedAmenitiesCart = useMemo(
-    () => sanitizeAmenitiesCart(amenitiesCart),
-    [amenitiesCart]
-  );
-
+  const selectedRoom = getRoomById(villaCart.roomTypeId, villaCart.guests || 2);
   const nights = calculateNights(villaCart.checkIn, villaCart.checkOut);
-  const breakdown = getRateBreakdown(villaCart.guests);
-  const basePrice = (breakdown.packagePrice + breakdown.extraRate) * nights;
+  const roomRate = Number(selectedRoom?.price || villaCart.roomRate || 0);
+  const basePrice = roomRate > 0 ? roomRate * nights : 0;
+  const rateIsKnown = basePrice > 0;
+
+  const cleanedAmenitiesCart = useMemo(
+    () => sanitizeAmenitiesCart(amenitiesCart, villaCart),
+    [amenitiesCart, villaCart]
+  );
 
   const amenityTotal = cleanedAmenitiesCart.reduce((sum, item) => {
     const price = Number(item.price || 0);
@@ -262,11 +282,15 @@ export default function PaymentModal({
     const name = guestDetails.name.trim();
     const contact = guestDetails.contact.trim();
     const refNo = guestDetails.refNo.trim();
+    const note = guestDetails.note.trim();
 
-    if (!name || !contact || refNo.length !== 6) {
-      setError(
-        'Please enter your full name, mobile number, and the last 6 digits of your payment reference.'
-      );
+    if (!name || !contact) {
+      setError('Please enter your full name and mobile number.');
+      return;
+    }
+
+    if (amountToSend > 0 && refNo.length !== 6) {
+      setError('Please enter the last 6 digits of your payment reference.');
       return;
     }
 
@@ -275,24 +299,30 @@ export default function PaymentModal({
     try {
       const parentReservation = {
         ...villaCart,
+        roomTypeId: selectedRoom?.id || villaCart.roomTypeId || '',
+        roomTypeName: selectedRoom?.name || villaCart.roomTypeName || villaCart.package || 'Room to confirm',
+        package: selectedRoom?.name || villaCart.package || 'Room to confirm',
+        roomRate,
+        isRateFinal: rateIsKnown,
         guestName: name,
         guestContact: contact,
-        paymentChannel: channel,
-        referenceNo: refNo,
+        guestNote: note,
+        paymentChannel: amountToSend > 0 ? channel : 'To be confirmed',
+        referenceNo: amountToSend > 0 ? refNo : 'REQUEST',
         basePrice,
         amenityTotal,
         securityDeposit,
-        totalPrice: masterTotal,
+        totalPrice: amountToSend,
         amountPaid: amountToSend,
         status: 'pending_payment',
-        paymentStatus: 'pending_verification',
+        paymentStatus: amountToSend > 0 ? 'pending_verification' : 'pending_owner_review',
         createdAt: new Date().toISOString(),
       };
 
       await commitMasterBooking(parentReservation, cleanedAmenitiesCart);
 
       if (theme.semaphoreApiKey) {
-        const sms = `Hi ${name}! We received your booking request for ${theme.villaName} with payment reference #${refNo}. Your reservation is now pending manual verification.`;
+        const sms = `Hi ${name}! We received your ${theme.villaName} reservation request for ${selectedRoom?.name || 'your selected room'}. Your request is now pending owner review.`;
 
         await fetch('https://api.semaphore.co/api/v4/messages', {
           method: 'POST',
@@ -311,7 +341,7 @@ export default function PaymentModal({
     } catch (err) {
       console.error(err);
       setError(
-        'We could not submit your booking for verification. Please check your connection and try again.'
+        'We could not submit your reservation request. Please check your connection and try again.'
       );
     } finally {
       setSubmitting(false);
@@ -322,7 +352,7 @@ export default function PaymentModal({
     return (
       <BookingSuccessModal
         isOpen={true}
-        referenceNo={guestDetails.refNo}
+        referenceNo={amountToSend > 0 ? guestDetails.refNo : 'REQUEST'}
         onClose={handleSuccessClose}
       />
     );
@@ -341,11 +371,11 @@ export default function PaymentModal({
             </p>
 
             <h2 className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
-              Payment information.
+              Submit reservation request.
             </h2>
 
             <p className="mt-3 max-w-sm text-xs leading-6 text-[#2A1A12]/50">
-              Send payment through your selected channel, then submit the last 6 digits of your payment reference for owner verification.
+              Send a payment reference if an amount is shown. If rates are not final yet, submit your request so the owner can review availability and pricing.
             </p>
           </div>
 
@@ -369,27 +399,42 @@ export default function PaymentModal({
           <section className="mb-4 overflow-hidden rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] shadow-[0_18px_45px_rgba(42,26,18,0.06)]">
             <div className="bg-[#2A1A12] p-6 text-[#FFF9F2]">
               <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#C15A3E]">
-                Total Amount to Send
+                {amountToSend > 0 ? 'Amount to Send' : 'Rate Status'}
               </div>
 
               <div className="font-display text-5xl italic leading-none">
-                {formatPHP(amountToSend)}
+                {amountToSend > 0 ? formatPHP(amountToSend) : 'To confirm'}
               </div>
 
               <p className="mt-4 text-xs leading-6 text-white/55">
-                This amount is submitted for manual verification. Your reservation is not confirmed until the owner verifies the payment reference.
+                {amountToSend > 0
+                  ? 'This amount is submitted for manual verification. Your reservation is not confirmed until the owner verifies the payment reference.'
+                  : 'The owner can confirm the final rate and availability after reviewing your preferred dates and room type.'}
               </p>
             </div>
 
             <div className="space-y-3 p-5">
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span className="text-[#2A1A12]/55">
-                  Base stay · {breakdown.packageName}
-                </span>
+              <div className="rounded-2xl border border-[#C15A3E]/20 bg-[#C15A3E]/[0.07] p-4 text-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#C15A3E]">
+                      Selected Room
+                    </div>
 
-                <span className="font-semibold text-[#2A1A12]">
-                  {formatPHP(basePrice)}
-                </span>
+                    <div className="mt-1 font-semibold text-[#2A1A12]">
+                      {selectedRoom?.name || 'Room to confirm'}
+                    </div>
+
+                    <div className="mt-1 text-xs leading-5 text-[#2A1A12]/45">
+                      {displayCheckIn} — {displayCheckOut} · {villaCart.guests || 2} guest
+                      {Number(villaCart.guests || 2) > 1 ? 's' : ''}
+                    </div>
+                  </div>
+
+                  <span className="whitespace-nowrap font-bold text-[#2A1A12]">
+                    {rateIsKnown ? formatPHP(basePrice) : 'To confirm'}
+                  </span>
+                </div>
               </div>
 
               {optionalAddOns.length > 0 && (
@@ -414,7 +459,7 @@ export default function PaymentModal({
                             </div>
 
                             <div className="mt-1 text-xs text-[#2A1A12]/45">
-                              {item.timeLabel || 'Selected service'}
+                              {item.timeLabel || 'Selected add-on'}
                             </div>
                           </div>
 
@@ -435,78 +480,80 @@ export default function PaymentModal({
                   </div>
 
                   <div className="mt-1 text-xs leading-5 text-[#2A1A12]/45">
-                    Returned after checkout inspection if there are no damages or unpaid charges.
+                    Final policy can be confirmed by the owner.
                   </div>
                 </div>
 
                 <span className="whitespace-nowrap font-bold text-[#C15A3E]">
-                  {formatPHP(securityDeposit || 5000)}
+                  {securityDeposit > 0 ? formatPHP(securityDeposit) : 'To confirm'}
                 </span>
               </div>
             </div>
           </section>
 
-          <section className="mb-4 rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-4 shadow-[0_18px_45px_rgba(42,26,18,0.05)]">
-            <div className="mb-4 grid grid-cols-3 gap-2">
-              {CHANNELS.map((item) => (
-                <button
-                  type="button"
-                  key={item}
-                  onClick={() => {
-                    setChannel(item);
-                    setCopied(false);
-                  }}
-                  className={`rounded-2xl border px-2 py-3 text-[9px] font-bold uppercase tracking-[0.14em] transition-all ${
-                    channel === item
-                      ? 'border-[#C15A3E] bg-[#C15A3E] text-white shadow-[0_12px_25px_rgba(193,90,62,0.22)]'
-                      : 'border-[#2A1A12]/10 bg-white text-[#2A1A12]/45 hover:border-[#C15A3E]/40 hover:text-[#C15A3E]'
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-[180px_1fr] md:items-center">
-              <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-[24px] border border-[#2A1A12]/10 bg-white p-3 shadow-inner md:h-44 md:w-44">
-                {paymentDetails.qrImage ? (
-                  <img
-                    src={paymentDetails.qrImage}
-                    alt={`${channel} QR code`}
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <div className="px-4 text-center text-xs leading-relaxed text-[#2A1A12]/40">
-                    QR image is not configured yet. Please use the account details.
-                  </div>
-                )}
-              </div>
-
-              <div className="text-center md:text-left">
-                <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#2A1A12]/35">
-                  {paymentDetails.label}
-                </div>
-
-                <div className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
-                  {paymentDetails.name}
-                </div>
-
-                {paymentDetails.copyValue && (
+          {amountToSend > 0 && (
+            <section className="mb-4 rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5 shadow-[0_18px_45px_rgba(42,26,18,0.05)]">
+              <div className="mb-5 grid grid-cols-2 gap-2">
+                {CHANNELS.map((item) => (
                   <button
                     type="button"
-                    onClick={copyNumber}
-                    className="mt-4 rounded-full border border-[#2A1A12]/10 bg-[#F6EFE6] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#2A1A12]/55 transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
+                    key={item}
+                    onClick={() => {
+                      setChannel(item);
+                      setCopied(false);
+                    }}
+                    className={`rounded-2xl border px-2 py-3 text-[9px] font-bold uppercase tracking-[0.14em] transition-all ${
+                      channel === item
+                        ? 'border-[#C15A3E] bg-[#C15A3E] text-white shadow-[0_12px_25px_rgba(193,90,62,0.22)]'
+                        : 'border-[#2A1A12]/10 bg-white text-[#2A1A12]/45 hover:border-[#C15A3E]/40 hover:text-[#C15A3E]'
+                    }`}
                   >
-                    {copied ? 'Copied' : paymentDetails.display}
+                    {item}
                   </button>
-                )}
+                ))}
+              </div>
 
-                <div className="mt-4 rounded-2xl border border-[#C15A3E]/15 bg-[#C15A3E]/[0.06] p-4 text-xs leading-6 text-[#2A1A12]/62">
-                  {paymentDetails.instruction}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-[180px_1fr] md:items-center">
+                <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-[24px] border border-[#2A1A12]/10 bg-white p-3 shadow-inner md:h-44 md:w-44">
+                  {paymentDetails.qrImage ? (
+                    <img
+                      src={paymentDetails.qrImage}
+                      alt={`${channel} QR code`}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <div className="px-4 text-center text-xs leading-relaxed text-[#2A1A12]/40">
+                      QR image is not configured yet. Please use the account details.
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-center md:text-left">
+                  <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#2A1A12]/35">
+                    {paymentDetails.label}
+                  </div>
+
+                  <div className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
+                    {paymentDetails.name}
+                  </div>
+
+                  {paymentDetails.copyValue && (
+                    <button
+                      type="button"
+                      onClick={copyNumber}
+                      className="mt-4 rounded-full border border-[#2A1A12]/10 bg-[#F6EFE6] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#2A1A12]/55 transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
+                    >
+                      {copied ? 'Copied' : paymentDetails.display}
+                    </button>
+                  )}
+
+                  <div className="mt-4 rounded-2xl border border-[#C15A3E]/15 bg-[#C15A3E]/[0.06] p-4 text-xs leading-6 text-[#2A1A12]/62">
+                    {paymentDetails.instruction}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           <section className="rounded-[28px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-5 shadow-[0_18px_45px_rgba(42,26,18,0.05)]">
             <div className="mb-5">
@@ -515,11 +562,11 @@ export default function PaymentModal({
               </p>
 
               <h3 className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12]">
-                Submit your payment reference.
+                Submit your request.
               </h3>
 
               <p className="mt-3 text-xs leading-6 text-[#2A1A12]/50">
-                The owner will use these details to match your payment and confirm the booking.
+                The owner can use these details to confirm the room, dates, rate, and payment status.
               </p>
             </div>
 
@@ -554,27 +601,43 @@ export default function PaymentModal({
                 />
               </div>
 
+              {amountToSend > 0 && (
+                <div>
+                  <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
+                    Last 6 Digits of Payment Reference
+                  </label>
+
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={guestDetails.refNo}
+                    onChange={(event) =>
+                      updateGuestField('refNo', event.target.value.replace(/\D/g, ''))
+                    }
+                    className="w-full rounded-2xl border border-[#2A1A12]/10 bg-white p-4 font-mono text-sm tracking-[0.18em] text-[#2A1A12] outline-none transition focus:border-[#C15A3E]"
+                    placeholder="000000"
+                  />
+
+                  <p className="mt-2 text-[11px] leading-relaxed text-[#2A1A12]/45">
+                    Your request stays pending until the owner verifies this reference.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/35">
-                  Last 6 Digits of Payment Reference
+                  Notes or Special Request
                 </label>
 
-                <input
-                  type="text"
-                  required
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={guestDetails.refNo}
-                  onChange={(event) =>
-                    updateGuestField('refNo', event.target.value.replace(/\D/g, ''))
-                  }
-                  className="w-full rounded-2xl border border-[#2A1A12]/10 bg-white p-4 font-mono text-sm tracking-[0.18em] text-[#2A1A12] outline-none transition focus:border-[#C15A3E]"
-                  placeholder="000000"
+                <textarea
+                  rows={3}
+                  value={guestDetails.note}
+                  onChange={(event) => updateGuestField('note', event.target.value)}
+                  className="w-full resize-none rounded-2xl border border-[#2A1A12]/10 bg-white p-4 text-sm text-[#2A1A12] outline-none transition focus:border-[#C15A3E]"
+                  placeholder="Example: We are visiting Enchanted Kingdom and prefer a room good for 6 guests."
                 />
-
-                <p className="mt-2 text-[11px] leading-relaxed text-[#2A1A12]/45">
-                  Your booking will stay pending until the owner verifies this payment manually.
-                </p>
               </div>
             </form>
           </section>
@@ -592,8 +655,10 @@ export default function PaymentModal({
             }`}
           >
             {submitting
-              ? 'Submitting Reference...'
-              : `Submit Payment Reference · ${formatPHP(amountToSend)}`}
+              ? 'Submitting Request...'
+              : amountToSend > 0
+                ? `Submit Request · ${formatPHP(amountToSend)}`
+                : 'Submit Reservation Request'}
           </button>
         </div>
       </div>

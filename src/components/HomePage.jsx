@@ -3,7 +3,7 @@ import theme from '../theme.config';
 import { formatPHP } from '../utils/formatters';
 
 const FALLBACK_HERO =
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=85';
+  'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&q=85';
 
 function getLocalTodayString() {
   const today = new Date();
@@ -66,40 +66,6 @@ function calculateNights(checkIn, checkOut) {
   return diff > 0 ? diff : 0;
 }
 
-function getRateBreakdown(guestCount) {
-  const guests = parseInt(guestCount, 10) || 2;
-
-  if (guests <= 3) {
-    return {
-      packageName: 'Tres Package',
-      packagePrice: 9000,
-      packageNote: '1–3 guests',
-      extraGuests: 0,
-      extraRate: 0,
-    };
-  }
-
-  if (guests <= 6) {
-    return {
-      packageName: 'Seis Package',
-      packagePrice: 13500,
-      packageNote: '4–6 guests',
-      extraGuests: 0,
-      extraRate: 0,
-    };
-  }
-
-  const extraGuests = Math.max(0, guests - 12);
-
-  return {
-    packageName: 'Doce Package',
-    packagePrice: 20500,
-    packageNote: extraGuests > 0 ? `7–12 guests + ${extraGuests} extra` : '7–12 guests',
-    extraGuests,
-    extraRate: extraGuests * 1500,
-  };
-}
-
 function isReservationActive(reservation) {
   return reservation?.status !== 'cancelled';
 }
@@ -129,6 +95,59 @@ function rangeHasBookingConflict(checkIn, checkOut, liveReservations = []) {
   });
 }
 
+function getRoomTypes() {
+  if (Array.isArray(theme.roomTypes) && theme.roomTypes.length > 0) {
+    return theme.roomTypes;
+  }
+
+  return [
+    {
+      id: 'family_cabin',
+      name: 'Family Cabin',
+      shortName: 'Family',
+      note: 'Family-friendly room for relaxed group stays.',
+      capacity: 'Good for families',
+      price: 0,
+      per: 'request',
+      image: FALLBACK_HERO,
+      highlights: ['Family-friendly setup', 'Comfortable stay', 'Good for groups'],
+    },
+  ];
+}
+
+function getSuggestedRoomType(guestCount) {
+  const guests = parseInt(guestCount, 10) || 2;
+  const rooms = getRoomTypes();
+
+  if (guests <= 4) {
+    return rooms.find((room) => room.id === 'deluxe_cabin') || rooms[0];
+  }
+
+  if (guests <= 8) {
+    return rooms.find((room) => room.id === 'family_cabin') || rooms[0];
+  }
+
+  return rooms.find((room) => room.id === 'bohemian_suite') || rooms[0];
+}
+
+function getRoomById(roomTypeId, guestCount) {
+  const rooms = getRoomTypes();
+
+  if (roomTypeId) {
+    const room = rooms.find((item) => item.id === roomTypeId);
+
+    if (room) return room;
+  }
+
+  return getSuggestedRoomType(guestCount);
+}
+
+function formatRoomPrice(room) {
+  if (!room || !Number(room.price)) return 'Rate to confirm';
+
+  return formatPHP(room.price);
+}
+
 export default function HomePage({
   villaCart,
   setVillaCart,
@@ -137,6 +156,9 @@ export default function HomePage({
 }) {
   const heroImg = theme.heroImages?.[0] || FALLBACK_HERO;
   const [calMonth, setCalMonth] = useState(new Date());
+
+  const roomTypes = getRoomTypes();
+  const selectedRoom = getRoomById(villaCart?.roomTypeId, villaCart?.guests || 2);
 
   const currentYear = calMonth.getFullYear();
   const currentMonthIdx = calMonth.getMonth();
@@ -147,9 +169,11 @@ export default function HomePage({
   const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
 
   const nights = calculateNights(villaCart?.checkIn, villaCart?.checkOut);
-  const breakdown = getRateBreakdown(villaCart?.guests || 2);
   const estimatedBaseTotal =
-    nights > 0 ? (breakdown.packagePrice + breakdown.extraRate) * nights : 0;
+    nights > 0 && Number(selectedRoom?.price)
+      ? Number(selectedRoom.price) * nights
+      : 0;
+
   const hasConflict = rangeHasBookingConflict(
     villaCart?.checkIn,
     villaCart?.checkOut,
@@ -159,6 +183,7 @@ export default function HomePage({
   const canProceed =
     Boolean(villaCart?.checkIn) &&
     Boolean(villaCart?.checkOut) &&
+    Boolean(selectedRoom?.id) &&
     nights > 0 &&
     !hasConflict;
 
@@ -178,12 +203,25 @@ export default function HomePage({
 
   const handleGuestsChange = (value) => {
     const guestCount = parseInt(value, 10) || 2;
-    const nextBreakdown = getRateBreakdown(guestCount);
+    const suggestedRoom = getSuggestedRoomType(guestCount);
 
     setVillaCart((prev) => ({
       ...prev,
       guests: guestCount,
-      package: nextBreakdown.packageName,
+      roomTypeId: prev.roomTypeId || suggestedRoom.id,
+      package: prev.package || suggestedRoom.name,
+    }));
+  };
+
+  const handleRoomChange = (roomTypeId) => {
+    const nextRoom = getRoomById(roomTypeId, villaCart?.guests || 2);
+
+    setVillaCart((prev) => ({
+      ...prev,
+      roomTypeId: nextRoom.id,
+      package: nextRoom.name,
+      roomTypeName: nextRoom.name,
+      roomRate: Number(nextRoom.price || 0),
     }));
   };
 
@@ -280,6 +318,19 @@ export default function HomePage({
 
   const handleProceed = () => {
     if (!canProceed) return;
+
+    const room = getRoomById(villaCart?.roomTypeId, villaCart?.guests || 2);
+
+    setVillaCart((prev) => ({
+      ...prev,
+      roomTypeId: room.id,
+      package: room.name,
+      roomTypeName: room.name,
+      roomRate: Number(room.price || 0),
+      basePrice: estimatedBaseTotal,
+      isRateFinal: Number(room.price || 0) > 0,
+    }));
+
     onProceed();
   };
 
@@ -292,12 +343,12 @@ export default function HomePage({
               <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#C15A3E]/25 bg-[#FFF9F2] px-3 py-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#C15A3E]" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#C15A3E]">
-                  {theme.location}
+                  {theme.locationNote}
                 </span>
               </div>
 
-              <h1 className="font-display max-w-3xl text-[2.65rem] font-semibold italic leading-[0.96] tracking-[-0.035em] text-[#2A1A12] sm:text-[4.1rem] lg:text-[5.1rem] xl:text-[5.7rem]">
-                A private Tagaytay villa for slow family weekends.
+              <h1 className="font-display max-w-3xl text-[2.6rem] font-semibold italic leading-[0.96] tracking-[-0.035em] text-[#2A1A12] sm:text-[4.1rem] lg:text-[5.1rem] xl:text-[5.65rem]">
+                Cozy staycations beside Enchanted Kingdom.
               </h1>
 
               <p className="mt-5 max-w-xl text-sm font-light leading-7 text-[#2A1A12]/65 md:text-base md:leading-8">
@@ -335,7 +386,7 @@ export default function HomePage({
                   onClick={scrollToPhotos}
                   className="rounded-2xl border border-[#2A1A12]/12 bg-[#FFF9F2] px-7 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-[#2A1A12]/65 transition hover:border-[#C15A3E]/40 hover:text-[#C15A3E]"
                 >
-                  View Photos
+                  View Rooms
                 </button>
               </div>
             </div>
@@ -353,7 +404,7 @@ export default function HomePage({
                 <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8">
                   <div className="max-w-md rounded-3xl border border-white/12 bg-black/30 p-4 text-white backdrop-blur-md md:p-5">
                     <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#F0B49F] md:text-[10px]">
-                      {theme.locationNote || 'Private Retreat'}
+                      {theme.locationNote}
                     </p>
 
                     <h2 className="font-display mt-2 text-3xl font-semibold italic leading-none md:text-4xl">
@@ -361,7 +412,7 @@ export default function HomePage({
                     </h2>
 
                     <p className="mt-3 text-[11px] leading-5 text-white/70 md:text-xs md:leading-6">
-                      Private pool, karaoke, kitchen, caretakers, and space for meaningful gatherings.
+                      Condo-style rooms, cozy interiors, and a convenient stay near Enchanted Kingdom.
                     </p>
                   </div>
                 </div>
@@ -376,16 +427,16 @@ export default function HomePage({
             <div className="mb-5 flex flex-col justify-between gap-3 border-b border-[#2A1A12]/10 pb-5 md:flex-row md:items-end">
               <div>
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#C15A3E]">
-                  Direct Reservation
+                  Direct Reservation Request
                 </p>
 
                 <h2 className="font-display text-3xl font-semibold italic leading-none text-[#2A1A12] md:text-4xl">
-                  Check dates, guests, and base rate.
+                  Check dates and choose a room.
                 </h2>
               </div>
 
               <p className="max-w-md text-xs leading-6 text-[#2A1A12]/50">
-                Add-ons and the refundable security deposit are shown before payment. No instant online charge.
+                Rates and room availability may be confirmed manually by the owner before final approval.
               </p>
             </div>
 
@@ -428,7 +479,7 @@ export default function HomePage({
                   onChange={(event) => handleGuestsChange(event.target.value)}
                   className="w-full bg-transparent text-sm font-semibold text-[#2A1A12] outline-none"
                 >
-                  {Array.from({ length: theme.maxGuests || 21 }, (_, index) => index + 1).map(
+                  {Array.from({ length: theme.maxGuests || 12 }, (_, index) => index + 1).map(
                     (guestCount) => (
                       <option key={guestCount} value={guestCount}>
                         {guestCount} Guest{guestCount > 1 ? 's' : ''}
@@ -438,17 +489,23 @@ export default function HomePage({
                 </select>
               </label>
 
-              <div className="rounded-2xl border border-[#C15A3E]/25 bg-[rgba(193,90,62,0.08)] px-4 py-4">
+              <label className="rounded-2xl border border-[#C15A3E]/25 bg-[rgba(193,90,62,0.08)] px-4 py-4 transition focus-within:border-[#C15A3E]">
                 <span className="mb-2 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#C15A3E]">
-                  Matched Rate
+                  Room Type
                 </span>
 
-                <div className="text-sm font-bold text-[#2A1A12]">{breakdown.packageName}</div>
-
-                <div className="mt-1 text-xs leading-relaxed text-[#2A1A12]/52">
-                  {breakdown.packageNote}
-                </div>
-              </div>
+                <select
+                  value={selectedRoom?.id || ''}
+                  onChange={(event) => handleRoomChange(event.target.value)}
+                  className="w-full bg-transparent text-sm font-bold text-[#2A1A12] outline-none"
+                >
+                  {roomTypes.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto]">
@@ -456,7 +513,7 @@ export default function HomePage({
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#2A1A12]/38">
-                      Estimated Base Stay
+                      Reservation Request
                     </div>
 
                     <div className="mt-1 text-xs text-[#2A1A12]/50">
@@ -464,13 +521,13 @@ export default function HomePage({
                         ? `${formatDisplayDate(villaCart.checkIn)} — ${formatDisplayDate(
                             villaCart.checkOut
                           )}`
-                        : 'Select dates to calculate'}
+                        : 'Select dates to continue'}
                     </div>
                   </div>
 
                   <div className="text-right">
                     <div className="font-display text-3xl italic leading-none text-[#2A1A12]">
-                      {estimatedBaseTotal > 0 ? formatPHP(estimatedBaseTotal) : '—'}
+                      {estimatedBaseTotal > 0 ? formatPHP(estimatedBaseTotal) : 'To confirm'}
                     </div>
 
                     <div className="mt-1 text-[9px] uppercase tracking-[0.15em] text-[#2A1A12]/35">
@@ -479,15 +536,13 @@ export default function HomePage({
                   </div>
                 </div>
 
-                {breakdown.extraGuests > 0 && (
-                  <div className="mt-3 rounded-xl bg-[#F6EFE6] px-3 py-2 text-xs text-[#2A1A12]/60">
-                    Includes extra guest charge: {formatPHP(breakdown.extraRate)} per night.
-                  </div>
-                )}
+                <div className="mt-3 rounded-xl bg-[#F6EFE6] px-3 py-2 text-xs text-[#2A1A12]/60">
+                  Selected room: <strong>{selectedRoom?.name}</strong>. Final rate and availability can be confirmed by the owner.
+                </div>
 
                 {hasConflict && (
                   <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
-                    These dates overlap with an existing booking. Please select another range.
+                    These dates overlap with an existing request. Please select another range.
                   </div>
                 )}
               </div>
@@ -502,12 +557,12 @@ export default function HomePage({
                     : 'cursor-not-allowed bg-[#2A1A12]/10 text-[#2A1A12]/35'
                 }`}
               >
-                Continue to Add-ons
+                Continue Request
               </button>
             </div>
 
             <p className="mt-4 text-center text-[11px] leading-relaxed text-[#2A1A12]/45">
-              Payment is submitted for manual verification after you receive the instructions.
+              This prototype supports manual review, payment reference submission, and owner confirmation.
             </p>
           </div>
         </div>
@@ -518,16 +573,16 @@ export default function HomePage({
           <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div>
               <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[#C15A3E]">
-                Property Photos
+                Room Photos
               </p>
 
               <h2 className="font-display max-w-2xl text-5xl font-semibold italic leading-[0.95] tracking-[-0.035em] md:text-6xl">
-                A private home made for relaxed gatherings.
+                Warm rooms for family stays and weekend trips.
               </h2>
             </div>
 
             <p className="max-w-md text-sm font-light leading-8 text-white/58">
-              Explore the pool area, entertainment spaces, and private villa atmosphere before choosing your dates.
+              Showcase approved room photos here so guests can compare the Family Cabin, Deluxe Cabin, Bariquit Suite, and Bohemian Suite.
             </p>
           </div>
 
@@ -541,7 +596,7 @@ export default function HomePage({
               >
                 <img
                   src={image}
-                  alt={`${theme.villaName} photo ${index + 1}`}
+                  alt={`${theme.villaName} room photo ${index + 1}`}
                   className={`w-full object-cover transition duration-700 hover:scale-105 ${
                     index === 0 ? 'h-[420px] md:h-[620px]' : 'h-[280px] md:h-[302px]'
                   }`}
@@ -560,7 +615,7 @@ export default function HomePage({
             </p>
 
             <h2 className="font-display max-w-xl text-5xl font-semibold italic leading-[0.94] tracking-[-0.035em] md:text-6xl">
-              Designed for privacy, comfort, and easy hosting.
+              Designed for comfort, convenience, and easy reservations.
             </h2>
 
             <p className="mt-7 max-w-2xl text-sm font-light leading-8 text-[#2A1A12]/58 md:text-base">
@@ -583,35 +638,35 @@ export default function HomePage({
           <div className="rounded-[30px] border border-[#2A1A12]/10 bg-[#F6EFE6] p-6 md:p-8">
             <div className="mb-8 border-b border-[#2A1A12]/10 pb-5">
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.26em] text-[#2A1A12]/38">
-                Standard Rates
+                Room Types
               </p>
 
               <p className="text-xs leading-6 text-[#2A1A12]/52">
-                Base rates only. Add-ons and the refundable security deposit are calculated during booking.
+                Room rates and capacity can be confirmed with the owner. This demo shows the reservation request flow.
               </p>
             </div>
 
             <div>
-              {(theme.rates || []).slice(0, 4).map((rate) => (
+              {roomTypes.map((room) => (
                 <div
-                  key={rate.name}
+                  key={room.id}
                   className="grid grid-cols-[1fr_auto] gap-4 border-b border-[#2A1A12]/10 py-5 last:border-b-0"
                 >
                   <div>
-                    <div className="font-semibold text-[#2A1A12]">{rate.name}</div>
+                    <div className="font-semibold text-[#2A1A12]">{room.name}</div>
 
                     <div className="mt-1 text-xs leading-relaxed text-[#2A1A12]/45">
-                      {rate.note}
+                      {room.note}
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <div className="font-display text-3xl italic leading-none text-[#2A1A12]">
-                      {formatPHP(rate.price)}
+                    <div className="font-display text-2xl italic leading-none text-[#2A1A12]">
+                      {formatRoomPrice(room)}
                     </div>
 
                     <div className="mt-1 text-[9px] uppercase tracking-[0.16em] text-[#2A1A12]/35">
-                      / {rate.per}
+                      {room.per === 'request' ? 'manual' : `/ ${room.per}`}
                     </div>
                   </div>
                 </div>
@@ -623,7 +678,7 @@ export default function HomePage({
               onClick={scrollToBookingPanel}
               className="mt-8 w-full rounded-2xl bg-[#2A1A12] px-6 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-[#FFF9F2] transition hover:bg-[#C15A3E]"
             >
-              Check Availability
+              Start Reservation Request
             </button>
           </div>
         </div>
@@ -806,43 +861,43 @@ export default function HomePage({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-[30px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-6">
               <div className="mb-5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#C15A3E]">
-                Deposit
+                Rates
               </div>
 
               <h3 className="font-display mb-4 text-3xl italic">
-                ₱5,000 refundable security deposit.
+                Final room rates are confirmed by the owner.
               </h3>
 
               <p className="text-sm font-light leading-7 text-[#2A1A12]/58">
-                Included in the total and returned after checkout inspection if there are no damages or unpaid charges.
+                This prototype can show estimated or request-based rates depending on what the owner wants to publish.
               </p>
             </div>
 
             <div className="rounded-[30px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-6">
               <div className="mb-5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#C15A3E]">
-                Stay Window
+                Room Availability
               </div>
 
               <h3 className="font-display mb-4 text-3xl italic">
-                Standard 22-hour accommodation.
+                Requests are reviewed before confirmation.
               </h3>
 
               <p className="text-sm font-light leading-7 text-[#2A1A12]/58">
-                Early check-in and late checkout can be added during booking, subject to availability.
+                Guests can submit preferred dates and room type, then the owner can verify availability.
               </p>
             </div>
 
             <div className="rounded-[30px] border border-[#2A1A12]/10 bg-[#FFF9F2] p-6">
               <div className="mb-5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#C15A3E]">
-                Verification
+                Payment
               </div>
 
               <h3 className="font-display mb-4 text-3xl italic">
-                Payment is manually verified.
+                Payment reference can be submitted manually.
               </h3>
 
               <p className="text-sm font-light leading-7 text-[#2A1A12]/58">
-                Guests submit their payment reference, then the owner confirms once payment is checked.
+                The owner can match the reference number and confirm the booking from the owner portal.
               </p>
             </div>
           </div>
@@ -857,11 +912,11 @@ export default function HomePage({
             </p>
 
             <h2 className="font-display text-5xl font-semibold italic leading-none tracking-[-0.035em] md:text-6xl">
-              Contact Balai de Correa.
+              Contact El Nissi Staycation.
             </h2>
 
             <p className="mx-auto mt-5 max-w-xl text-sm font-light leading-7 text-[#2A1A12]/58">
-              For ocular visits, special requests, or booking questions, reach out through the official details below.
+              For room availability, stay details, or booking questions, reach out through the official details below.
             </p>
           </div>
 
@@ -922,7 +977,7 @@ export default function HomePage({
               onClick={scrollToBookingPanel}
               className="rounded-2xl bg-[#2A1A12] px-8 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-[#FFF9F2] transition hover:bg-[#C15A3E]"
             >
-              Start a Reservation
+              Start Reservation Request
             </button>
 
             <div className="font-display mt-5 text-lg italic text-[#2A1A12]/45">

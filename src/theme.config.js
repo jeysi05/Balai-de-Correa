@@ -1,182 +1,212 @@
 // ─────────────────────────────────────────────
-// BALAI DE CORREA — WHITE-LABEL TENANT CONFIG
-// Private Villa Booking Prototype
+// EL NISSI STAYCATION — WHITE-LABEL TENANT CONFIG
+// Staycation Booking Prototype
 // ─────────────────────────────────────────────
 
 const defaultTenantConfig = {
   // Brand & Identity
-  id: "balai-de-correa-001",
-  villaName: "Balai de Correa",
-  tagline: "Private Villa · Tagaytay City",
-  location: "Tagaytay City, Cavite",
-  locationNote: "Exclusive Forest Retreat",
+  id: "el-nissi-staycation-001",
+  villaName: "El Nissi Staycation",
+  tagline: "Beside Enchanted Kingdom · Santa Rosa",
+  location: "Santa Rosa, Laguna",
+  locationNote: "Beside Enchanted Kingdom",
 
   // Images from /public
-  logo: "/logo.jpg",
+  // Replace these with approved El Nissi photos before sending the final client link.
+  logo: "/el-nissi-logo.jpg",
 
-  heroImages: [
-    "/villa.jpg",
-  ],
+  heroImages: ["/el-nissi-hero.jpg"],
 
   galleryImages: [
-    "/villa.jpg",
-    "/pool.jpg",
-    "/karaoke.jpg",
-    "/atv.jpg",
+    "/el-nissi-hero.jpg",
+    "/el-nissi-family-cabin.jpg",
+    "/el-nissi-deluxe-cabin.jpg",
+    "/el-nissi-bariquit-suite.jpg",
+    "/el-nissi-bohemian-suite.jpg",
   ],
 
   // Hero Copy
-  heroHeadline: ["Private villa stays,", "made simple."],
-  heroHeadlineAccent: "villa",
+  heroHeadline: ["Cozy staycations,", "beside Enchanted Kingdom."],
+  heroHeadlineAccent: "staycations",
   heroDescription:
-    "A secluded, relaxing vacation home tucked in the heart of Tagaytay — perfect for family bondings, intimate celebrations, and peaceful weekends away from the city.",
+    "A warm, condo-style staycation experience in Santa Rosa, Laguna — designed for families, barkadas, and business travelers who want a comfortable home-like stay near Enchanted Kingdom.",
 
   // About Section
   aboutBody:
-    "Balai de Correa is a private staycation villa in the forested highlands of Tagaytay. The property features spacious rooms, a private pool area, karaoke and entertainment amenities, outdoor gathering spaces, and on-site caretakers who can assist throughout your stay. It is designed for families and groups who want privacy, comfort, and a slower weekend away from the city.",
+    "El Nissi Staycation offers thoughtfully designed condo-style accommodations near Enchanted Kingdom in Santa Rosa, Laguna. Each room is styled to feel comfortable, cozy, and home-like, making it ideal for family trips, barkada getaways, quick celebrations, and business stays. Guests can enjoy unique interiors, relaxing spaces, and convenient access to nearby attractions.",
 
   // Property Specs
   specs: [
-    { value: "4", label: "Bedrooms" },
-    { value: "21", label: "Max Guests" },
-    { value: "4", label: "Bathrooms" },
-    { value: "22h", label: "Accommodation" },
+    { value: "EK", label: "Nearby" },
+    { value: "4", label: "Room Types" },
+    { value: "5–10", label: "Group Fit" },
+    { value: "Home", label: "Like Stay" },
   ],
 
   amenities: [
-    "Private Swimming Pool & Lounge",
-    "Karaoke & Entertainment Area",
-    "Air-conditioned Primary Rooms",
-    "Fully-Equipped Kitchen & Pantry",
-    "Outdoor Dining & Charcoal Grill",
-    "Two (2) On-site Caretakers",
+    "Condo-style Staycation Rooms",
+    "Family-friendly Accommodations",
+    "Unique Themed Interiors",
+    "Comfortable Home-like Setup",
+    "Near Enchanted Kingdom",
+    "Good for Families, Barkadas, and Business Travelers",
   ],
 
-  // Base Pricing Engine
+  // Room Types
+  // Prices are intentionally left as request-based until the client confirms actual rates.
+  roomTypes: [
+    {
+      id: "family_cabin",
+      name: "Family Cabin",
+      shortName: "Family",
+      note: "Family-friendly room for relaxed group stays.",
+      capacity: "Good for families",
+      price: 0,
+      per: "request",
+      image: "/el-nissi-family-cabin.jpg",
+      highlights: ["Family-friendly setup", "Comfortable stay", "Good for groups"],
+    },
+    {
+      id: "deluxe_cabin",
+      name: "Deluxe Cabin",
+      shortName: "Deluxe",
+      note: "Cozy condo-style room near Enchanted Kingdom.",
+      capacity: "Good for small groups",
+      price: 0,
+      per: "request",
+      image: "/el-nissi-deluxe-cabin.jpg",
+      highlights: ["Warm room styling", "Near EK", "Home-like comfort"],
+    },
+    {
+      id: "bariquit_suite",
+      name: "Bariquit Suite",
+      shortName: "Bariquit",
+      note: "A styled staycation suite for guests who want a more distinct room experience.",
+      capacity: "Capacity to confirm",
+      price: 0,
+      per: "request",
+      image: "/el-nissi-bariquit-suite.jpg",
+      highlights: ["Styled interiors", "Private stay", "Rate to confirm"],
+    },
+    {
+      id: "bohemian_suite",
+      name: "Bohemian Suite",
+      shortName: "Bohemian",
+      note: "A cozy boho-inspired suite designed for comfort and camaraderie.",
+      capacity: "Good for group stays",
+      price: 0,
+      per: "request",
+      image: "/el-nissi-bohemian-suite.jpg",
+      highlights: ["Bohemian theme", "Cozy interiors", "Family staycation"],
+    },
+  ],
+
+  // Backward-compatible rates section for the existing UI.
   rates: [
     {
-      name: "Tres Package",
-      note: "1-3 Guests · 1-2 Primary Rooms",
-      price: 9000,
-      per: "night",
+      name: "Family Cabin",
+      note: "Family-friendly room · Rate to be confirmed",
+      price: 0,
+      per: "request",
     },
     {
-      name: "Seis Package",
-      note: "4-6 Guests · 2-3 Primary Rooms",
-      price: 13500,
-      per: "night",
+      name: "Deluxe Cabin",
+      note: "Condo-style stay · Rate to be confirmed",
+      price: 0,
+      per: "request",
     },
     {
-      name: "Doce Package",
-      note: "7-12 Guests · All Rooms",
-      price: 20500,
-      per: "night",
+      name: "Bariquit Suite",
+      note: "Styled suite · Rate to be confirmed",
+      price: 0,
+      per: "request",
     },
     {
-      name: "Day Tour",
-      note: "Max 25 Guests · 10 Hours",
-      price: 1000,
-      per: "head",
+      name: "Bohemian Suite",
+      note: "Boho-inspired room · Rate to be confirmed",
+      price: 0,
+      per: "request",
     },
   ],
 
   // Booking Constraints
-  maxGuests: 21,
+  maxGuests: 12,
 
   occasions: [
-    "Family Vacation",
+    "Family Staycation",
+    "Enchanted Kingdom Trip",
     "Barkada Getaway",
-    "Day Tour",
-    "Intimate Celebration",
-    "Birthday Celebration",
-    "Company Outing",
+    "Birthday Stay",
+    "Business Travel",
+    "Quick Weekend Stay",
   ],
 
-  stayTypes: [
-    "Overnight Stay (22 hours)",
-    "Day Tour (10 hours)",
-  ],
+  stayTypes: ["Overnight Stay", "Weekend Stay", "Custom Stay Request"],
 
   // Add-ons
+  // We will simplify BookingPage next. For now, these keep the existing add-ons flow working.
   hourlyAmenities: [
     {
       id: "early_checkin",
       name: "Early Check-in",
-      price: 1000,
+      price: 500,
       unit: "hour",
-      note: "Subject to availability before the standard check-in time.",
+      note: "Subject to room availability before standard check-in time.",
       image:
-        "https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&q=80",
     },
     {
       id: "late_checkout",
       name: "Late Checkout",
-      price: 1000,
+      price: 500,
       unit: "hour",
-      note: "Subject to availability after the standard checkout time.",
+      note: "Subject to room availability after standard checkout time.",
       image:
         "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&q=80",
     },
     {
-      id: "towel_rental",
-      name: "Towels",
-      price: 100,
-      unit: "piece",
-      note: "Additional towel rental per piece.",
-      image:
-        "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80",
-    },
-    {
-      id: "house_cook_12",
-      name: "House Cook (1-12 guests)",
-      price: 1500,
-      unit: "night",
-      note: "Cooking and dishwashing labor only. Ingredients are not included.",
-      image:
-        "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80",
-    },
-    {
-      id: "house_cook_21",
-      name: "House Cook (13-21 guests)",
-      price: 3000,
-      unit: "night",
-      note: "Cooking and dishwashing labor only. Ingredients are not included.",
-      image:
-        "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&q=80",
-    },
-    {
-      id: "laundry_service",
-      name: "Laundry Service (1-5kg)",
+      id: "extra_guest",
+      name: "Extra Guest",
       price: 500,
-      unit: "service",
-      note: "Wash, dry, and fold service.",
+      unit: "head",
+      note: "Additional guest charge, subject to room capacity.",
       image:
-        "https://images.unsplash.com/photo-1545173168-9f1947e8017e?auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80",
+    },
+    {
+      id: "extra_bedding",
+      name: "Extra Bedding",
+      price: 300,
+      unit: "set",
+      note: "Additional bedding set for group stays.",
+      image:
+        "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&q=80",
     },
     {
       id: "security_dep",
       name: "Security Deposit",
-      price: 5000,
+      price: 1000,
       unit: "stay",
-      note: "Refundable after checkout inspection if there are no damages or unpaid charges.",
+      note: "Final security deposit amount can be confirmed by the owner.",
       image: "",
     },
   ],
 
   // Payment Details
-  gcashName: "BALAI DE CORREA",
-  gcashNumber: "09171234567",
-  gcashDisplay: "0917 123 4567",
+  // Replace QR files/details only after the owner approves.
+  gcashName: "EL NISSI STAYCATION",
+  gcashNumber: "09190741207",
+  gcashDisplay: "0919 074 1207",
   gcashQR: "/gcash-qr.jpg",
 
-  mayaName: "BALAI DE CORREA",
-  mayaNumber: "09171234567",
-  mayaDisplay: "0917 123 4567",
+  mayaName: "EL NISSI STAYCATION",
+  mayaNumber: "09190741207",
+  mayaDisplay: "0919 074 1207",
   mayaQR: "/maya-qr.jpg",
 
-  bankName: "BALAI DE CORREA",
-  bankNumber: "China Bank Account",
-  bankDisplay: "China Bank Transfer",
+  bankName: "EL NISSI STAYCATION",
+  bankNumber: "Bank details to be confirmed",
+  bankDisplay: "Bank Transfer Details",
   instaPayQR: "/chinabank-qr.jpg",
 
   // Optional future calendar sync URL
@@ -189,23 +219,23 @@ const defaultTenantConfig = {
   colors: {
     primary: "#2A1A12",
     accent: "#C15A3E",
-    accent2: "#1A3A2A",
+    accent2: "#B99655",
     ink: "#2A1A12",
-    canvas: "#F6EFE6",
+    canvas: "#F7EFE6",
     canvas2: "#FFF9F2",
-    canvas3: "#E7D8CA",
+    canvas3: "#E8D8C8",
     mist: "#8A7768",
   },
 
   // Contact Details
   contact: {
-    facebook: "Balai de Correa Tagaytay",
-    facebookUrl: "https://www.facebook.com/profile.php?id=61580241952007",
-    email: "balaidecorrea@gmail.com",
-    phone: "(+63) 917 882 7422",
-    address: "Monte Vista Subdivision, Tagaytay City",
-    mapsUrl: "https://share.google/lIWFsRlUx6QT6WFC7_",
-    ocularNote: "Open for ocular visits by appointment",
+    facebook: "El Nissi Staycation - Beside Enchanted Kingdom",
+    facebookUrl: "https://www.facebook.com/",
+    email: "elnissistaycationph@gmail.com",
+    phone: "0919 074 1207",
+    address: "Santa Rosa, Laguna, 4026",
+    mapsUrl: "https://www.google.com/maps/search/Santa+Rosa+Laguna+4026",
+    ocularNote: "Message the page for availability, inquiries, and stay details.",
   },
 };
 
