@@ -1,6 +1,5 @@
 // ─────────────────────────────────────────────
 // EL NISSI STAYCATION — WHITE-LABEL TENANT CONFIG
-// Staycation Booking Prototype
 // ─────────────────────────────────────────────
 
 const defaultTenantConfig = {
@@ -12,8 +11,11 @@ const defaultTenantConfig = {
   locationNote: "Beside Enchanted Kingdom",
 
   // Images from /public
-  // Replace these with approved El Nissi photos before sending the final client link.
   logo: "/el-nissi-logo.jpg",
+  favicon: "/favicon.svg",
+  ogImage: "/og-el-nissi.jpg",
+  fallbackImage:
+    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&q=85",
 
   heroImages: ["/el-nissi-hero.jpg"],
 
@@ -185,10 +187,31 @@ const defaultTenantConfig = {
     {
       id: "security_dep",
       name: "Security Deposit",
-      price: 1000,
+      price: 0,
       unit: "stay",
       note: "Final security deposit amount can be confirmed by the owner.",
       image: "",
+    },
+  ],
+
+  testimonials: [
+    {
+      quote:
+        "The place feels cozy and home-like, perfect after a full day around Santa Rosa.",
+      name: "Family Guest",
+      detail: "Family staycation",
+    },
+    {
+      quote:
+        "Convenient location near Enchanted Kingdom and easy to recommend for quick weekend trips.",
+      name: "Weekend Traveler",
+      detail: "EK trip",
+    },
+    {
+      quote:
+        "The room style feels warm and personal, not like a generic hotel room.",
+      name: "Staycation Guest",
+      detail: "Room experience",
     },
   ],
 

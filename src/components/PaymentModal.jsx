@@ -179,6 +179,21 @@ function getPaymentDetails(channel) {
   };
 }
 
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
 export default function PaymentModal({
   villaCart,
   amenitiesCart = [],
@@ -319,7 +334,11 @@ export default function PaymentModal({
         createdAt: new Date().toISOString(),
       };
 
-      await commitMasterBooking(parentReservation, cleanedAmenitiesCart);
+      await withTimeout(
+        commitMasterBooking(parentReservation, cleanedAmenitiesCart),
+        15000,
+        'Booking server could not be reached. Please turn off Brave Shields/ad blocker for this site, refresh, and try again.'
+      );
 
       if (theme.semaphoreApiKey) {
         const sms = `Hi ${name}! We received your ${theme.villaName} reservation request for ${selectedRoom?.name || 'your selected room'}. Your request is now pending owner review.`;
@@ -341,7 +360,8 @@ export default function PaymentModal({
     } catch (err) {
       console.error(err);
       setError(
-        'We could not submit your reservation request. Please check your connection and try again.'
+        err?.message ||
+          'We could not submit your reservation request. Please check your connection and try again.'
       );
     } finally {
       setSubmitting(false);

@@ -20,14 +20,20 @@ export default function App() {
   const [liveAmenities, setLiveAmenities] = useState([]);
 
   // Master Cart State
-  const [villaCart, setVillaCart] = useState({
+  const getEmptyVillaCart = () => ({
     checkIn: '',
     checkOut: '',
     guests: 2,
-    package: 'Tres Package', // <-- Added Package State
+    roomTypeId: '',
+    roomTypeName: '',
+    package: '',
     occasion: '',
-    basePrice: 0 
+    basePrice: 0,
+    roomRate: 0,
+    isRateFinal: false,
   });
+
+  const [villaCart, setVillaCart] = useState(getEmptyVillaCart);
   const [amenitiesCart, setAmenitiesCart] = useState([]); 
   const [showPayment, setShowPayment] = useState(false);
 
@@ -98,8 +104,7 @@ export default function App() {
           onClose={() => setShowPayment(false)}
           onSuccess={() => {
             setShowPayment(false);
-            // Reset state including the new package field
-            setVillaCart({ checkIn: '', checkOut: '', guests: 2, package: 'Tres Package', occasion: '', basePrice: 0 });
+            setVillaCart(getEmptyVillaCart());
             setAmenitiesCart([]);
             setPage('home');
           }}

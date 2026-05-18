@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import theme from '../theme.config';
 import { formatPHP } from '../utils/formatters';
 
@@ -148,13 +148,34 @@ function formatRoomPrice(room) {
   return formatPHP(room.price);
 }
 
+function SafeImage({ src, fallbackSrc = FALLBACK_HERO, alt, className }) {
+  const [currentSrc, setCurrentSrc] = useState(src || fallbackSrc);
+
+  useEffect(() => {
+    setCurrentSrc(src || fallbackSrc);
+  }, [src, fallbackSrc]);
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt}
+      className={className}
+      onError={() => {
+        if (currentSrc !== fallbackSrc) {
+          setCurrentSrc(fallbackSrc);
+        }
+      }}
+    />
+  );
+}
+
 export default function HomePage({
   villaCart,
   setVillaCart,
   onProceed,
   liveReservations = [],
 }) {
-  const heroImg = theme.heroImages?.[0] || FALLBACK_HERO;
+  const heroImg = theme.heroImages?.[0] || theme.fallbackImage || FALLBACK_HERO;
   const [calMonth, setCalMonth] = useState(new Date());
 
   const roomTypes = getRoomTypes();
@@ -191,7 +212,7 @@ export default function HomePage({
     const images = [...(theme.galleryImages || []), ...(theme.heroImages || [])].filter(Boolean);
     const uniqueImages = [...new Set(images)];
 
-    return uniqueImages.length > 0 ? uniqueImages : [FALLBACK_HERO];
+    return uniqueImages.length > 0 ? uniqueImages : [theme.fallbackImage || FALLBACK_HERO];
   }, []);
 
   const handleCartUpdate = (field, value) => {
@@ -393,8 +414,9 @@ export default function HomePage({
 
             <div className="order-2">
               <div className="relative overflow-hidden rounded-[28px] bg-[#2A1A12] shadow-[0_24px_70px_rgba(42,26,18,0.18)] md:rounded-[32px]">
-                <img
+                <SafeImage
                   src={heroImg}
+                  fallbackSrc={theme.fallbackImage || FALLBACK_HERO}
                   alt={theme.villaName}
                   className="h-[285px] w-full object-cover sm:h-[440px] lg:h-[610px]"
                 />
@@ -562,7 +584,7 @@ export default function HomePage({
             </div>
 
             <p className="mt-4 text-center text-[11px] leading-relaxed text-[#2A1A12]/45">
-              This prototype supports manual review, payment reference submission, and owner confirmation.
+              Your request will be reviewed by the owner before final confirmation.
             </p>
           </div>
         </div>
@@ -582,7 +604,7 @@ export default function HomePage({
             </div>
 
             <p className="max-w-md text-sm font-light leading-8 text-white/58">
-              Showcase approved room photos here so guests can compare the Family Cabin, Deluxe Cabin, Bariquit Suite, and Bohemian Suite.
+              Explore cozy room styles and staycation spaces before choosing your preferred dates.
             </p>
           </div>
 
@@ -594,8 +616,9 @@ export default function HomePage({
                   index === 0 ? 'md:col-span-2 md:row-span-2' : ''
                 }`}
               >
-                <img
+                <SafeImage
                   src={image}
+                  fallbackSrc={theme.fallbackImage || FALLBACK_HERO}
                   alt={`${theme.villaName} room photo ${index + 1}`}
                   className={`w-full object-cover transition duration-700 hover:scale-105 ${
                     index === 0 ? 'h-[420px] md:h-[620px]' : 'h-[280px] md:h-[302px]'
@@ -846,6 +869,48 @@ export default function HomePage({
         </div>
       </section>
 
+      <section id="testimonials" className="bg-[#FFF9F2] px-4 py-20 md:px-8 md:py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-[0.75fr_1fr] md:items-end">
+            <div>
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[#C15A3E]">
+                Guest Notes
+              </p>
+
+              <h2 className="font-display text-5xl font-semibold italic leading-[0.95] tracking-[-0.035em] md:text-6xl">
+                Made for easy family stays.
+              </h2>
+            </div>
+
+            <p className="max-w-xl text-sm font-light leading-7 text-[#2A1A12]/58 md:ml-auto">
+              Add real guest reviews here once the owner approves them. These placeholder notes show how testimonials will support trust before guests submit a request.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {(theme.testimonials || []).map((testimonial) => (
+              <article
+                key={`${testimonial.name}-${testimonial.detail}`}
+                className="rounded-[30px] border border-[#2A1A12]/10 bg-[#F6EFE6] p-6 shadow-[0_18px_45px_rgba(42,26,18,0.04)]"
+              >
+                <div className="mb-5 text-[#C15A3E]">★★★★★</div>
+
+                <p className="text-sm font-light leading-7 text-[#2A1A12]/68">
+                  “{testimonial.quote}”
+                </p>
+
+                <div className="mt-6 border-t border-[#2A1A12]/10 pt-5">
+                  <div className="font-semibold text-[#2A1A12]">{testimonial.name}</div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2A1A12]/35">
+                    {testimonial.detail}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section id="policies" className="bg-[#F6EFE6] px-4 py-20 md:px-8 md:py-28">
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 max-w-2xl">
@@ -869,7 +934,7 @@ export default function HomePage({
               </h3>
 
               <p className="text-sm font-light leading-7 text-[#2A1A12]/58">
-                This prototype can show estimated or request-based rates depending on what the owner wants to publish.
+                Published rates can be shown here once confirmed. For now, guests can submit a request and wait for owner review.
               </p>
             </div>
 

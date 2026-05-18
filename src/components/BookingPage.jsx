@@ -421,7 +421,7 @@ export default function BookingPage({
             </div>
           </div>
 
-          <div className="mb-6 grid grid-cols-3 gap-2 md:hidden">
+          <div className="mb-6 grid grid-cols-2 gap-2 md:hidden">
             <div className="rounded-2xl border border-[#2A1A12]/10 bg-[#FFF9F2] p-3">
               <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#2A1A12]/35">
                 Dates
@@ -442,13 +442,13 @@ export default function BookingPage({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#C15A3E]/20 bg-[#C15A3E]/[0.06] p-3">
+            <div className="col-span-2 rounded-2xl border border-[#C15A3E]/20 bg-[#C15A3E]/[0.06] p-3">
               <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#C15A3E]">
                 Room
               </div>
 
               <div className="mt-1 truncate text-[11px] font-semibold leading-4 text-[#2A1A12]">
-                {selectedRoom?.shortName || selectedRoom?.name || 'Room'}
+                {selectedRoom?.name || 'Room to confirm'}
               </div>
             </div>
           </div>
