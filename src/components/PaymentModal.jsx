@@ -179,21 +179,6 @@ function getPaymentDetails(channel) {
   };
 }
 
-
-function withTimeout(promise, timeoutMs, timeoutMessage) {
-  let timeoutId;
-
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = window.setTimeout(() => {
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    window.clearTimeout(timeoutId);
-  });
-}
-
 export default function PaymentModal({
   villaCart,
   amenitiesCart = [],
@@ -211,6 +196,7 @@ export default function PaymentModal({
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [backgroundSaveStatus, setBackgroundSaveStatus] = useState('idle');
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -287,10 +273,10 @@ export default function PaymentModal({
     }
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (submitting) return;
+    if (submitting || showSuccess) return;
 
     setError('');
 
@@ -309,63 +295,58 @@ export default function PaymentModal({
       return;
     }
 
+    const parentReservation = {
+      ...villaCart,
+      roomTypeId: selectedRoom?.id || villaCart.roomTypeId || '',
+      roomTypeName:
+        selectedRoom?.name ||
+        villaCart.roomTypeName ||
+        villaCart.package ||
+        'Room to confirm',
+      package:
+        selectedRoom?.name ||
+        villaCart.package ||
+        'Room to confirm',
+      roomRate,
+      isRateFinal: rateIsKnown,
+      guestName: name,
+      guestContact: contact,
+      guestNote: note,
+      paymentChannel: amountToSend > 0 ? channel : 'To be confirmed',
+      referenceNo: amountToSend > 0 ? refNo : 'REQUEST',
+      basePrice,
+      amenityTotal,
+      securityDeposit,
+      totalPrice: amountToSend,
+      amountPaid: amountToSend,
+      status: 'pending_payment',
+      paymentStatus: amountToSend > 0 ? 'pending_verification' : 'pending_owner_review',
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log('[Booking Submit] Showing success immediately.');
+    console.log('[Booking Submit] Reservation payload:', parentReservation);
+    console.log('[Booking Submit] Amenity payload:', cleanedAmenitiesCart);
+
     setSubmitting(true);
+    setBackgroundSaveStatus('saving');
 
-    try {
-      const parentReservation = {
-        ...villaCart,
-        roomTypeId: selectedRoom?.id || villaCart.roomTypeId || '',
-        roomTypeName: selectedRoom?.name || villaCart.roomTypeName || villaCart.package || 'Room to confirm',
-        package: selectedRoom?.name || villaCart.package || 'Room to confirm',
-        roomRate,
-        isRateFinal: rateIsKnown,
-        guestName: name,
-        guestContact: contact,
-        guestNote: note,
-        paymentChannel: amountToSend > 0 ? channel : 'To be confirmed',
-        referenceNo: amountToSend > 0 ? refNo : 'REQUEST',
-        basePrice,
-        amenityTotal,
-        securityDeposit,
-        totalPrice: amountToSend,
-        amountPaid: amountToSend,
-        status: 'pending_payment',
-        paymentStatus: amountToSend > 0 ? 'pending_verification' : 'pending_owner_review',
-        createdAt: new Date().toISOString(),
-      };
+    // IMPORTANT:
+    // Show success immediately so the guest is never stuck waiting on Firestore.
+    setShowSuccess(true);
 
-      await withTimeout(
-        commitMasterBooking(parentReservation, cleanedAmenitiesCart),
-        15000,
-        'Booking server could not be reached. Please turn off Brave Shields/ad blocker for this site, refresh, and try again.'
-      );
-
-      if (theme.semaphoreApiKey) {
-        const sms = `Hi ${name}! We received your ${theme.villaName} reservation request for ${selectedRoom?.name || 'your selected room'}. Your request is now pending owner review.`;
-
-        await fetch('https://api.semaphore.co/api/v4/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            apikey: theme.semaphoreApiKey,
-            number: contact,
-            message: sms,
-          }),
-        }).catch(console.error);
-      }
-
-      setShowSuccess(true);
-    } catch (err) {
-      console.error(err);
-      setError(
-        err?.message ||
-          'We could not submit your reservation request. Please check your connection and try again.'
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    commitMasterBooking(parentReservation, cleanedAmenitiesCart)
+      .then((reservationId) => {
+        console.log('[Booking Submit] Firebase saved successfully:', reservationId);
+        setBackgroundSaveStatus('saved');
+      })
+      .catch((err) => {
+        console.error('[Booking Submit] Firebase save failed:', err);
+        setBackgroundSaveStatus('failed');
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
   };
 
   if (showSuccess) {
@@ -373,6 +354,7 @@ export default function PaymentModal({
       <BookingSuccessModal
         isOpen={true}
         referenceNo={amountToSend > 0 ? guestDetails.refNo : 'REQUEST'}
+        saveStatus={backgroundSaveStatus}
         onClose={handleSuccessClose}
       />
     );
