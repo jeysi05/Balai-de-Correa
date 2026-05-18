@@ -1,5 +1,10 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import {
+  collection,
+  doc,
+  initializeFirestore,
+  writeBatch,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -11,30 +16,77 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-import { writeBatch, doc, collection } from "firebase/firestore";
+function validateFirebaseConfig(config) {
+  const missingKeys = Object.entries(config)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
 
-export const commitMasterBooking = async (villaReservation, amenityBookings) => {
+  if (missingKeys.length > 0) {
+    throw new Error(
+      `Missing Firebase environment variables: ${missingKeys.join(", ")}. Check your .env file locally and your Vercel Environment Variables.`
+    );
+  }
+}
+
+validateFirebaseConfig(firebaseConfig);
+
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
+
+export const storage = getStorage(app);
+
+function withTimeout(promise, timeoutMs = 12000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(
+            "Firestore request timed out. Please check your internet connection, browser extensions, Firebase rules, or Vercel environment variables."
+          )
+        );
+      }, timeoutMs);
+    }),
+  ]);
+}
+
+export const commitMasterBooking = async (villaReservation, amenityBookings = []) => {
+  if (!villaReservation) {
+    throw new Error("Missing reservation data.");
+  }
+
   const batch = writeBatch(db);
-  
   const reservationRef = doc(collection(db, "villa_reservations"));
+
+  const reservationStatus = villaReservation.status || "pending_payment";
+  const paymentStatus = villaReservation.paymentStatus || "pending_owner_review";
+
   batch.set(reservationRef, {
     ...villaReservation,
-    createdAt: new Date().toISOString(),
-    status: 'pending_payment' 
+    id: reservationRef.id,
+    createdAt: villaReservation.createdAt || new Date().toISOString(),
+    status: reservationStatus,
+    paymentStatus,
   });
 
-  amenityBookings.forEach(amenity => {
+  amenityBookings.forEach((amenity) => {
+    if (!amenity || !amenity.amenityId) return;
+
     const amenityRef = doc(collection(db, "amenity_bookings"));
-    batch.set(amenityRef, { 
-      ...amenity, 
-      reservation_id: reservationRef.id, 
-      status: 'pending_payment'
+
+    batch.set(amenityRef, {
+      ...amenity,
+      id: amenityRef.id,
+      reservation_id: reservationRef.id,
+      status: reservationStatus,
+      createdAt: new Date().toISOString(),
     });
   });
 
-  await batch.commit();
+  await withTimeout(batch.commit(), 12000);
+
   return reservationRef.id;
 };
