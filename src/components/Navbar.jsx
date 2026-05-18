@@ -10,6 +10,9 @@ export default function Navbar({
 }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  const logoSrc = theme.logoImage || '/el-nissi-logo.jpg';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -112,17 +115,19 @@ export default function Navbar({
             </div>
           ) : (
             <>
-              <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#C15A3E]/35 bg-[#C15A3E]/10 text-[#C15A3E] transition group-hover:bg-[#C15A3E] group-hover:text-white sm:flex">
-                <svg
-                  className="h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.45"
-                >
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#C15A3E]/25 bg-white shadow-sm transition group-hover:border-[#C15A3E]/50 sm:h-12 sm:w-12">
+                {!logoFailed ? (
+                  <img
+                    src={logoSrc}
+                    alt={`${theme.villaName} logo`}
+                    className="h-full w-full object-cover"
+                    onError={() => setLogoFailed(true)}
+                  />
+                ) : (
+                  <div className="font-display text-xl font-semibold italic text-[#C15A3E]">
+                    {theme.villaName?.charAt(0) || 'E'}
+                  </div>
+                )}
               </div>
 
               <div className="min-w-0">
